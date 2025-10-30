@@ -6,8 +6,24 @@ import AnimatedBackground from "@/components/AnimatedBackground"
 export const metadata: Metadata = {
   title: "Colorful Coin",
   description: "Spin the light. Feel the spectrum.",
-    generator: 'v0.app'
+  icons: {
+    icon: "/color-coin.png",       // browser tab favicon
+    shortcut: "/color-coin.png",
+    apple: "/color-coin.png",      // for iOS Safari homescreen
+  },
+  openGraph: {
+    title: "Colorful Coin",
+    description: "Spin the light. Feel the spectrum.",
+    images: ["/color-coin.png"],   // when shared on social media
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Colorful Coin",
+    description: "Spin the light. Feel the spectrum.",
+    images: ["/color-coin.png"],
+  },
 }
+
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
