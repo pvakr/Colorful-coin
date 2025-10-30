@@ -1,0 +1,33 @@
+/* app/color-matcher/styles.module.css */
+.container {
+  min-height: 100vh;
+  
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  color: white;
+}
+
+.title {
+  font-size: 2.5rem;
+  font-weight: bold;
+  margin-bottom: 1.5rem;
+  color: #ff6c00;
+  text-shadow: 0 0 10px #ff6c00;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(4, 90px);
+  gap: 15px;
+}
+
+.card {
+  width: 90px;
+  height: 90px;
+  border-radius: 1rem;
+  border: 2px solid white;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
