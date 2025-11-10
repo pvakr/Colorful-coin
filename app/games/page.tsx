@@ -26,6 +26,10 @@ const games = [
   { title: "Color Spectral", slug: "color-spectral", description: "A long horizontal strip contains a color gradient with one tile slightly out of order" },
   { title: "Color Synesthesia", slug: "color-synesthesia", description: "Sound/Emotion MappingThe player navigates a maze or grid" },
   { title: "Color Puzzle", slug: "color-puzzle", description: "Sound/Emotion MappingThe player navigates a maze or grid" },
+  { title: "Color Fusion Lab", slug: "color-fusionlab", description: "Challenges precision and understanding of digital color space" },
+  { title: "Color Chromaticfilter", slug: "color-chromaticfilter", description: "Find the single unique color among four identical tiles, while a highly saturated background constantly changes to trick your eyes" },
+  { title: "Color DepthField", slug: "color-depth", description: "That moves beyond simple color matching into the complexities of blending, transparency, and stacking order" },
+  { title: "Color SpectrumFlashpoint", slug: "color-spectrumflashpoint", description: "That moves beyond simple color matching into the complexities of blending, transparency, and stacking order" },
 ]
 
 export default function GameHomePage() {
