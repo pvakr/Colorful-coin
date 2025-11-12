@@ -30,6 +30,9 @@ const games = [
   { title: "Color Chromaticfilter", slug: "color-chromaticfilter", description: "Find the single unique color among four identical tiles, while a highly saturated background constantly changes to trick your eyes" },
   { title: "Color DepthField", slug: "color-depth", description: "That moves beyond simple color matching into the complexities of blending, transparency, and stacking order" },
   { title: "Color SpectrumFlashpoint", slug: "color-spectrumflashpoint", description: "That moves beyond simple color matching into the complexities of blending, transparency, and stacking order" },
+  { title: "Color Spectral Echo", slug: "color-spectralecho", description: "Translate memory of light (RGB) into the required subtractive filters (CMY) under time pressure" },
+  { title: "Color Chroma Drift", slug: "color-chromadrift", description: "Puzzle game played entirely in an environment that simulates a specific type of color blindness" },
+  { title: "Color Pigment Mixer Tycoon", slug: "color-pigmentmixertycoon", description: "A resource management and strategy game based on the economics of real-world pigments" },
 ]
 
 export default function GameHomePage() {
