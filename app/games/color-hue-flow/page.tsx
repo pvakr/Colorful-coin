@@ -476,11 +476,15 @@ const App: React.FC = () => {
     <main className="min-h-screen flex flex-col items-center justify-center antialiased">
       {/* Back button */}
       <div className="fixed top-4 left-4 z-10">
-        <button onClick={handleBackToGames} className="flex items-center text-gray-700 hover:text-indigo-600 transition">
-          <ArrowLeft className="w-5 h-5 mr-2" />
-          Back to Games
-        </button>
-      </div>
+    <button 
+        onClick={handleBackToGames} 
+        className="flex items-center text-gray-700 hover:text-indigo-600 transition 
+                   border border-gray-400 rounded-full px-3 py-1.5"
+    >
+        <ArrowLeft className="w-5 h-5 mr-2" />
+        Back to Games
+    </button>
+</div>
 
       <section className="w-full max-w-lg">
         <div className="flex flex-col items-center gap-2 mb-8">

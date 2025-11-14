@@ -47,13 +47,13 @@ const Modal: React.FC<ModalProps> = ({ isOpen, title, description, children, onC
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4 transition-opacity duration-300">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/30 backdrop-blur-sm p-4 transition-opacity duration-300">
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm transform transition-all duration-300 scale-100">
         <div className="p-6">
           <div className="flex items-center gap-3">
             {title.includes("Correct") ? (
               <CheckCircle className="w-6 h-6 text-emerald-500" />
-            ) : title.includes("Wrong") ? (
+            ) : title.includes("Wrong") || title.includes("Game Over") ? (
               <XCircle className="w-6 h-6 text-rose-500" />
             ) : (
               <MessageCircleQuestion className="w-6 h-6 text-sky-500" />
@@ -73,7 +73,6 @@ const Modal: React.FC<ModalProps> = ({ isOpen, title, description, children, onC
 const Button: React.FC<ButtonProps> = ({ children, onClick, className = '', variant = 'primary' }) => {
     const baseClasses = 'px-4 py-2 rounded-full font-medium transition duration-150 ease-in-out shadow-md';
     
-    // Fixed: Index signature issue is resolved by using the union type Variant
     const variantClasses: Record<Variant, string> = {
         primary: 'bg-indigo-600 text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2',
         outline: 'bg-transparent text-gray-700 border border-gray-500 hover:bg-gray-100 shadow-none'
@@ -96,6 +95,7 @@ export default function App() {
   const [score, setScore] = useState<number>(0);
   const [feedback, setFeedback] = useState<string>("");
   const [isFeedbackOpen, setIsFeedbackOpen] = useState<boolean>(false);
+  const [isCorrect, setIsCorrect] = useState<boolean>(true); // Track if the last answer was correct
   const router = useRouter()
 
   const generateRound = () => {
@@ -130,20 +130,31 @@ export default function App() {
   }, []);
 
   const handleClick = (selectedCue: string) => {
-    const isCorrect = selectedCue === correctCue;
+    const wasCorrect = selectedCue === correctCue;
     
-    if (isCorrect) {
+    setIsCorrect(wasCorrect);
+
+    if (wasCorrect) {
       setScore((s) => s + 1);
       setFeedback("Correct! You nailed the description.");
     } else {
-      setFeedback(`Wrong! The correct cue was '${correctCue}'.`);
+      // Set Game Over message and prepare for restart
+      setFeedback(`Game Over! The correct cue was '${correctCue}'. Your final score is ${score}.`);
     }
     setIsFeedbackOpen(true);
   };
 
-  const handleNext = () => {
+  const handleNextOrRestart = () => {
     setIsFeedbackOpen(false);
-    generateRound();
+    
+    if (isCorrect) {
+        // Continue to the next round
+        generateRound();
+    } else {
+        // Game Over: Reset score and start a new game
+        setScore(0);
+        generateRound();
+    }
   }
 
   const handleBack = () => {
@@ -151,7 +162,6 @@ export default function App() {
   }
 
   return (
-    // Removed all background color classes from the main wrapper
     <div className="min-h-screen p-6 flex flex-col items-center justify-center relative antialiased">
       
       {/* Back button container - using fixed positioning */}
@@ -167,7 +177,7 @@ export default function App() {
         </Button>
       </div>
 
-      {/* Main content section - removed all card/visual styling (rounded-2xl, bg-white/85, backdrop-blur, p-6, shadow-xl) */}
+      {/* Main content section */}
       <section className="w-full max-w-3xl p-6">
           
         <div className="flex flex-col items-center gap-2">
@@ -216,11 +226,11 @@ export default function App() {
       <Modal
         isOpen={isFeedbackOpen}
         onClose={() => setIsFeedbackOpen(false)}
-        title={feedback.includes("Correct") ? "Correct Answer!" : "Incorrect Answer"}
+        title={isCorrect ? "Correct Answer!" : "Game Over"}
         description={feedback}
       >
-        <Button onClick={handleNext}>
-          Next Color
+        <Button onClick={handleNextOrRestart}>
+          {isCorrect ? "Next Color" : "Restart Game"}
         </Button>
       </Modal>
     </div>

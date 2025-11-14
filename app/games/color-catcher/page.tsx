@@ -33,27 +33,20 @@ export default function ColorCatcher() {
   const [streak, setStreak] = useState(0)
   const { toast } = useToast()
   const [gameOver, setGameOver] = useState(false)
-  const [countdown, setCountdown] = useState<number | null>(null)
+  const [countdown, setCountdown] = useState<number | null>(3) // Start with 3-second countdown
 
+  // --- Refs for reliable interval/timeout access ---
   const playerXRef = useRef(playerX)
   const ballsRef = useRef<Ball[]>(balls)
   const gameOverRef = useRef(gameOver)
   const countdownRef = useRef<number | null>(countdown)
 
-  useEffect(() => {
-    playerXRef.current = playerX
-  }, [playerX])
-  useEffect(() => {
-    ballsRef.current = balls
-  }, [balls])
-  useEffect(() => {
-    gameOverRef.current = gameOver
-  }, [gameOver])
-  useEffect(() => {
-    countdownRef.current = countdown
-  }, [countdown])
+  useEffect(() => { playerXRef.current = playerX }, [playerX])
+  useEffect(() => { ballsRef.current = balls }, [balls])
+  useEffect(() => { gameOverRef.current = gameOver }, [gameOver])
+  useEffect(() => { countdownRef.current = countdown }, [countdown])
 
-  // countdown tick
+  // --- Countdown Logic ---
   useEffect(() => {
     if (countdown === null) return
     if (countdown <= 0) {
@@ -64,6 +57,7 @@ export default function ColorCatcher() {
     return () => clearTimeout(t)
   }, [countdown])
 
+  // --- Ball Dropping and Falling Logic (Game Loop) ---
   useEffect(() => {
     const dropId = setInterval(() => {
       if (gameOverRef.current || countdownRef.current !== null) return
@@ -78,16 +72,20 @@ export default function ColorCatcher() {
       setBalls((prev) => {
         const moved = prev.map((ball) => ({ ...ball, y: ball.y + CONTAINER_HEIGHT / 70 }))
 
-        // Check collision with player
+        // Check collision with player (Game Over condition)
         const playerCenterX = playerXRef.current + PLAYER_SIZE / 2
-        const playerCenterY = CONTAINER_HEIGHT - BOTTOM_MARGIN - PLAYER_SIZE / 2
+        // Player's center Y is fixed relative to the bottom
+        const playerCenterY = CONTAINER_HEIGHT - BOTTOM_MARGIN - PLAYER_SIZE / 2 
+        
         let collided = false
         for (const ball of moved) {
           const ballCenterX = ball.x + BALL_SIZE / 2
           const ballCenterY = ball.y + BALL_SIZE / 2
           const dx = playerCenterX - ballCenterX
           const dy = playerCenterY - ballCenterY
-          if (Math.hypot(dx, dy) < (PLAYER_SIZE + BALL_SIZE) / 2) {
+          
+          // Collision occurs if distance between centers < sum of radii
+          if (Math.hypot(dx, dy) < (PLAYER_SIZE + BALL_SIZE) / 2) { 
             collided = true
             break
           }
@@ -95,9 +93,10 @@ export default function ColorCatcher() {
 
         if (collided) {
           setGameOver(true)
-          return prev // freeze
+          return prev // freeze balls
         }
 
+        // Check for missed balls
         const kept = moved.filter((ball) => ball.y < CONTAINER_HEIGHT) as Ball[]
         const missed = moved.length - kept.length
         if (missed > 0) {
@@ -118,6 +117,7 @@ export default function ColorCatcher() {
     }
   }, [])
 
+  // --- Bullet Movement and Collision Detection Logic (FIX APPLIED HERE) ---
   useEffect(() => {
     const id = setInterval(() => {
       if (gameOverRef.current || countdownRef.current !== null) return
@@ -131,16 +131,23 @@ export default function ColorCatcher() {
           if (newY < 0) return
 
           const idx = remainingBalls.findIndex((ball) => {
+            // Horizontal distance between centers
             const dx = b.x + BULLET_SIZE / 2 - (ball.x + BALL_SIZE / 2)
-            const dy = newY - (ball.y + BALL_SIZE / 2)
+            
+            // CORRECTED: Vertical distance between centers
+            const bulletCenterY = newY + BULLET_SIZE / 2 
+            const ballCenterY = ball.y + BALL_SIZE / 2
+            const dy = bulletCenterY - ballCenterY 
+
+            // Collision check: Distance < Sum of Radii
             return Math.hypot(dx, dy) < (BALL_SIZE + BULLET_SIZE) / 2
           })
 
           if (idx >= 0) {
-            remainingBalls.splice(idx, 1)
+            remainingBalls.splice(idx, 1) // Remove the hit ball
             hits++
           } else {
-            kept.push({ ...b, y: newY })
+            kept.push({ ...b, y: newY }) // Keep the moving bullet
           }
         })
 
@@ -151,7 +158,8 @@ export default function ColorCatcher() {
             title: "Hit!",
             description: `+${hits} • Streak: ${streak + hits}`,
           })
-          setBalls(remainingBalls)
+          // Update the main balls state with remaining balls
+          setBalls(remainingBalls) 
         }
         return kept
       })
@@ -159,12 +167,16 @@ export default function ColorCatcher() {
     return () => clearInterval(id)
   }, [])
 
+  // --- Input Handling ---
   const handleKey = (e: KeyboardEvent) => {
+    if (gameOverRef.current || countdownRef.current !== null) return
+    
     if (e.key === "ArrowLeft") {
       setPlayerX((x) => Math.max(0, x - MOVE_STEP))
     } else if (e.key === "ArrowRight") {
       setPlayerX((x) => Math.min(CONTAINER_WIDTH - PLAYER_SIZE, x + MOVE_STEP))
     } else if (e.key === " ") {
+      e.preventDefault(); // Prevent page scroll when spacebar is pressed
       const bx = playerXRef.current + PLAYER_SIZE / 2 - BULLET_SIZE / 2
       const by = CONTAINER_HEIGHT - BOTTOM_MARGIN - PLAYER_SIZE - BULLET_SIZE
       setBullets((b) => [...b, { id: Date.now(), x: bx, y: by }])
@@ -176,8 +188,9 @@ export default function ColorCatcher() {
     return () => window.removeEventListener("keydown", handleKey)
   }, [])
 
+  // --- Navigation & Game Control ---
   const handleBack = () => {
-    router.push("/games") // Navigate to /games
+    router.push("/games")
   }
 
   const handleRestart = () => {
@@ -187,13 +200,13 @@ export default function ColorCatcher() {
     setScore(0)
     setStreak(0)
     setPlayerX((CONTAINER_WIDTH - PLAYER_SIZE) / 2)
-    setCountdown(3)
+    setCountdown(3) // Restart with countdown
   }
 
   return (
     <div>
-      {/* Back button - simplified, no added background */}
-      <div className="fixed top-6 left-6">
+      {/* Back button */}
+      <div className="fixed top-6 left-6 z-10">
         <Button
           variant="outline"
           size="sm"
@@ -229,15 +242,20 @@ export default function ColorCatcher() {
             </div>
           </div>
 
+          {/* Game Container */}
           <div
-            className="mt-6 mx-auto relative overflow-hidden border-4 border-white"
+            className="mt-6 mx-auto relative overflow-hidden border-4 border-white shadow-xl"
             style={{ width: CONTAINER_WIDTH, height: CONTAINER_HEIGHT, backgroundColor: "#1F1B3A" }}
+            tabIndex={0} // Ensure div can receive focus for input testing if necessary
           >
+            {/* Countdown Overlay */}
             {countdown !== null && (
-              <div className="absolute inset-0 flex items-center justify-center">
+              <div className="absolute inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm z-20">
                 <div className="text-6xl sm:text-7xl font-extrabold text-white">{countdown}</div>
               </div>
             )}
+            
+            {/* Falling Balls */}
             {balls.map((b) => (
               <motion.div
                 key={b.id}
@@ -248,6 +266,7 @@ export default function ColorCatcher() {
               />
             ))}
 
+            {/* Bullets */}
             {bullets.map((b) => (
               <motion.div
                 key={b.id}
@@ -258,6 +277,7 @@ export default function ColorCatcher() {
               />
             ))}
 
+            {/* Player (Cannon) */}
             <motion.div
               className="absolute rounded-full border-4 border-white"
               style={{
@@ -268,7 +288,7 @@ export default function ColorCatcher() {
                 left: playerX,
               }}
               animate={{ left: playerX }}
-              transition={{ left: { duration: 0.2 } }}
+              transition={{ left: { duration: 0.1 } }} // Slightly faster transition for better feel
             />
           </div>
 
@@ -281,12 +301,13 @@ export default function ColorCatcher() {
             to shoot
           </p>
 
+          {/* Game Over Dialog */}
           <Dialog open={gameOver}>
             <DialogContent className="sm:max-w-md">
               <DialogHeader>
                 <DialogTitle className="text-2xl">Game Over</DialogTitle>
                 <DialogDescription>
-                  Your score: <span className="font-semibold">{score}</span>
+                  Your final score: <span className="font-semibold">{score}</span>
                 </DialogDescription>
               </DialogHeader>
               <div className="flex justify-end gap-2">

@@ -8,24 +8,28 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 
 const COLORS = ["red", "blue", "green", "yellow", "purple"]
 const TILE_COUNT = 25
-const ROUND_TIME = 5000
+// Increase the round time slightly for better initial play experience
+const ROUND_TIME = 8000 
 
 export default function ColorRushGame() {
-  const router = useRouter() // ✅ router defined here
+  const router = useRouter()
 
   const [tiles, setTiles] = useState<string[]>([])
   const [targetColor, setTargetColor] = useState("")
   const [score, setScore] = useState(0)
   const [message, setMessage] = useState("")
-  const [gameState, setGameState] = useState<"intro" | "playing" | "roundOver">("intro")
+  // Removed "roundOver" state, now directly uses "gameOver"
+  const [gameState, setGameState] = useState<"intro" | "playing" | "gameOver">("intro") 
   const [roundKey, setRoundKey] = useState(0)
   const [isStartOpen, setIsStartOpen] = useState(true)
-  const [countdown, setCountdown] = useState<number | null>(null)
+  // Removed [countdown] state
   const [timeLeft, setTimeLeft] = useState<number>(Math.floor(ROUND_TIME / 1000))
-  const [isResultOpen, setIsResultOpen] = useState(false)
+  // Renamed to reflect final game over
+  const [isGameOverOpen, setIsGameOverOpen] = useState(false) 
   const [roundClicks, setRoundClicks] = useState(0)
+  const [finalScore, setFinalScore] = useState(0)
 
-  const startRound = () => {
+  const startRound = (resetScore: boolean = false) => {
     const newTiles = Array.from({ length: TILE_COUNT }, () => COLORS[Math.floor(Math.random() * COLORS.length)])
     const validColors = new Set(newTiles)
     const color = Array.from(validColors)[Math.floor(Math.random() * validColors.size)]
@@ -37,32 +41,26 @@ export default function ColorRushGame() {
     setRoundKey((prev) => prev + 1)
     setTimeLeft(Math.floor(ROUND_TIME / 1000))
     setRoundClicks(0)
+    if (resetScore) {
+      setScore(0)
+    }
   }
 
-  // countdown tick
+  // time left during round - modified for Game Over logic
   useEffect(() => {
-    if (countdown === null) return
-    if (countdown <= 0) {
-      setCountdown(null)
-      startRound()
-      return
-    }
-    const t = setTimeout(() => setCountdown((c) => (c ? c - 1 : null)), 1000)
-    return () => clearTimeout(t)
-  }, [countdown])
-
-  // time left during round
-  useEffect(() => {
-    if (gameState !== "playing" || countdown !== null) return
+    if (gameState !== "playing") return
+    
     if (timeLeft <= 0) {
-      setMessage("Time’s up!")
-      setGameState("roundOver")
-      setIsResultOpen(true)
+      setMessage("Time's up! Game Over.")
+      setGameState("gameOver")
+      setFinalScore(score) // Capture final score
+      setIsGameOverOpen(true) // Open the Game Over dialog
       return
     }
+    
     const t = setTimeout(() => setTimeLeft((t) => t - 1), 1000)
     return () => clearTimeout(t)
-  }, [gameState, timeLeft, countdown])
+  }, [gameState, timeLeft, score])
 
   const handleClick = (color: string) => {
     if (gameState !== "playing") return
@@ -71,8 +69,17 @@ export default function ColorRushGame() {
       setScore((s) => s + 1)
       setMessage("✅ Nice!")
       setRoundClicks((c) => c + 1)
+      // Check if all target tiles have been clicked (simple check based on count vs tiles)
+      const targetCount = tiles.filter(c => c === targetColor).length;
+      if (roundClicks + 1 >= targetCount) {
+        // Automatically start the next round if all are clicked
+        setTimeout(() => startRound(false), 500); 
+      }
     } else {
-      setMessage("❌ Wrong!")
+      setMessage("❌ Wrong! Game Over.")
+      setGameState("gameOver")
+      setFinalScore(score) // Capture final score
+      setIsGameOverOpen(true) // Open the Game Over dialog
     }
   }
 
@@ -86,12 +93,22 @@ export default function ColorRushGame() {
     })[color]
 
   const handleBack = () => {
-    router.push("/games") // ✅ Navigate back to games
+    router.push("/games")
+  }
+
+  const handleRestart = () => {
+    setIsGameOverOpen(false)
+    setIsStartOpen(true) // Go back to the intro dialog to start afresh
+    setScore(0)
+    setFinalScore(0)
+    setGameState("intro")
+    setTiles([])
+    setMessage("")
   }
 
   return (
     <div>
-      <div className="fixed top-6 left-6">
+      <div className="fixed top-6 left-6 z-10">
         <Button variant="outline" size="sm" className="bg-transparent hover:bg-transparent border px-3" onClick={handleBack}>
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back to Games
@@ -105,10 +122,12 @@ export default function ColorRushGame() {
             <span>Score</span>
             <span className="font-semibold">{score}</span>
           </span>
-          <span className="inline-flex items-center gap-2 text-xs sm:text-sm font-medium border rounded-full px-3 py-1">
-            <Timer className="w-3.5 h-3.5" />
-            <span>{gameState === "playing" ? `${timeLeft}s` : ""}</span>
-          </span>
+          {gameState === "playing" && (
+            <span className="inline-flex items-center gap-2 text-xs sm:text-sm font-medium border rounded-full px-3 py-1">
+              <Timer className="w-3.5 h-3.5" />
+              <span>{timeLeft}s</span>
+            </span>
+          )}
         </div>
 
         {gameState === "playing" && (
@@ -132,46 +151,40 @@ export default function ColorRushGame() {
           ))}
         </div>
 
-        {/* Start dialog with countdown trigger */}
+        {/* Start dialog (intro) - removed countdown trigger */}
         <Dialog open={isStartOpen} onOpenChange={setIsStartOpen}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle className="text-2xl">Start Game</DialogTitle>
-              <DialogDescription>Click start to begin. You have 5 seconds each round.</DialogDescription>
+              <DialogTitle className="text-2xl">Color Rush</DialogTitle>
+              <DialogDescription>
+                Click start to begin. Click all the tiles of the target color before time runs out. 
+                <br />**One wrong click or running out of time ends the game!**
+              </DialogDescription>
             </DialogHeader>
             <div className="flex justify-end">
-              <Button onClick={() => { setIsStartOpen(false); setCountdown(3); }}>Start</Button>
+              <Button onClick={() => { setIsStartOpen(false); startRound(true); }}>
+                Start Game
+              </Button>
             </div>
           </DialogContent>
         </Dialog>
 
-        {/* Countdown overlay */}
-        {countdown !== null && (
-          <div className="fixed inset-0 flex items-center justify-center pointer-events-none">
-            <div className="text-7xl font-extrabold text-white">{countdown}</div>
-          </div>
-        )}
+        {/* Removed Countdown overlay */}
 
-        {/* Result dialog */}
-        <Dialog open={isResultOpen} onOpenChange={setIsResultOpen}>
+        {/* Game Over dialog - formerly Result dialog */}
+        <Dialog open={isGameOverOpen} onOpenChange={setIsGameOverOpen}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle className="text-2xl">Round Over</DialogTitle>
+              <DialogTitle className="text-2xl">Game Over!</DialogTitle>
               <DialogDescription>
-                Score: <span className="font-semibold">{score}</span>
+                Your Final Score: <span className="font-bold text-lg text-red-600">{finalScore}</span>
               </DialogDescription>
             </DialogHeader>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={handleBack}>Back to Games</Button>
-              {roundClicks > 0 ? (
-                <Button onClick={() => { setIsResultOpen(false); setCountdown(3); }}>
-                  Next Round
-                </Button>
-              ) : (
-                <Button onClick={() => { setIsResultOpen(false); setIsStartOpen(true); }}>
-                  Restart Game
-                </Button>
-              )}
+              <Button onClick={handleRestart}>
+                Restart Game
+              </Button>
             </div>
           </DialogContent>
         </Dialog>

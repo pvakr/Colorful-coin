@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, CheckCircle, XCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 
 const COLOR_HEX: Record<string, string> = {
   Red: "#ef4444",
@@ -27,9 +28,12 @@ export default function FlashColors() {
   const [correctWord, setCorrectWord] = useState<string>("Red")
   const [choices, setChoices] = useState<string[]>([])
   const [visible, setVisible] = useState(false)
-  const [status, setStatus] = useState<string>("Tap the correct color name")
+  const [status, setStatus] = useState<"waiting" | "win" | "gameOver">("waiting")
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false)
+  const [message, setMessage] = useState("Tap the correct color name")
   const timerRef = useRef<number | null>(null)
 
+  // Speed decreases as the round increases (max speed 250ms)
   const speed = useMemo(() => Math.max(250, 500 - (round - 1) * 20), [round])
 
   useEffect(() => {
@@ -52,33 +56,55 @@ export default function FlashColors() {
     setChoices(shuffle([word, ...distractors]))
 
     setVisible(true)
+    // Flash the color for the calculated speed
     timerRef.current = window.setTimeout(() => setVisible(false), speed)
+    setStatus("waiting") // Ensure status is waiting before the flash
+    setMessage("Tap the correct color name")
   }
 
   function onSelect(choice: string) {
+    if (status !== "waiting" || isFeedbackOpen) return // Prevent multiple clicks
+
     if (choice === correctWord) {
+      // Correct: Set win status and open dialog
       setScore(s => s + 1)
-      setStatus("✅ Correct!")
+      setStatus("win")
+      setMessage("Correct! You earned a point.")
     } else {
-      setStatus(`❌ Oops — It was ${correctWord}`)
+      // Incorrect: Set game over status and open dialog
+      setStatus("gameOver")
+      setMessage(`Game Over! The correct color was ${correctWord}.`)
     }
-    setTimeout(() => {
-      setStatus("Tap the correct color name")
-      setRound(r => r + 1)
-    }, 500)
+    
+    setIsFeedbackOpen(true)
   }
-    const handleBack = () => {
-    router.push("/games") // ✅ Navigate back to /games
+  
+  const handleNextOrRestart = () => {
+    setIsFeedbackOpen(false)
+    if (status === "win") {
+      // Continue to next round
+      setRound(r => r + 1)
+    } else if (status === "gameOver") {
+      // Restart the entire game
+      setStarted(false)
+      setRound(1)
+      setScore(0)
+      setMessage("Tap the correct color name")
+    }
+  }
+
+  const handleBack = () => {
+    router.push("/games")
   }
 
   return (
     <div>
-      {/* Back Button positioned at the top left slightly */}
-      <div className="fixed top-30 left-60">
+      {/* Back Button */}
+      <div className="fixed top-6 left-6 z-10">
         <Button
           variant="outline"
           size="sm"
-          className="bg-white/20 backdrop-blur border-white/30 text-white hover:bg-white/30 border border-yellow text-black"
+          className="bg-white/20 backdrop-blur border-white/30 text-white hover:bg-white/30 border text-black"
           onClick={handleBack}
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
@@ -91,13 +117,14 @@ export default function FlashColors() {
       {!started ? (
         <section className="w-full max-w-3xl rounded-2xl bg-white/85 backdrop-blur p-8 shadow-xl text-center">
           <h1 className="text-2xl font-bold mb-4">🎨 Flash Colors</h1>
+          {round > 1 && <p className="text-lg font-semibold text-red-600 mb-4">Game Over! Final Score: {score}</p>}
           <p className="text-gray-600 mb-6">Test your color memory and reflexes!</p>
           <Button
               onClick={() => {
                 setStarted(true)
                 setRound(1)
                 setScore(0)
-                setStatus("Tap the correct color name")
+                setMessage("Tap the correct color name")
               }}
               className="bg-black text-white border hover:bg-gray-800"
             >
@@ -118,7 +145,7 @@ export default function FlashColors() {
             />
           </div>
 
-          <p className="mb-3 font-medium">{status}</p>
+          <p className="mb-3 font-medium">{message}</p>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {choices.map(c => (
@@ -126,6 +153,8 @@ export default function FlashColors() {
                   key={c}
                   onClick={() => onSelect(c)}
                   className="bg-black text-white border hover:bg-gray-800"
+                  // Disable selection while waiting for the next round or if dialog is open
+                  disabled={status !== "waiting" || isFeedbackOpen} 
                 >
                   {c}
                 </Button>
@@ -134,11 +163,58 @@ export default function FlashColors() {
         </section>
       )}
     </main>
+    
+    {/* Feedback Dialog (Popup) */}
+    <Dialog open={isFeedbackOpen} onOpenChange={setIsFeedbackOpen}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-2xl">
+            {status === "win" ? (
+              <>
+                <CheckCircle className="w-6 h-6 text-green-500" />
+                Correct!
+              </>
+            ) : (
+              <>
+                <XCircle className="w-6 h-6 text-red-500" />
+                Game Over
+              </>
+            )}
+          </DialogTitle>
+          <DialogDescription>
+            {/* The primary message is rendered first by DialogDescription's intrinsic <p> */}
+            {message}
+            
+            {/* FIX APPLIED HERE: Use <br /> and <span> tags to ensure valid nesting inside <p> */}
+            {status === "win" && (
+              <>
+                <br />
+                <span>Prepare for Round {round + 1}!</span>
+              </>
+            )}
+            {status === "gameOver" && (
+              <>
+                <br />
+                <span className="font-bold">Your Final Score: {score}</span>
+              </>
+            )}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" onClick={handleBack}>
+            Back to Games
+          </Button>
+          <Button onClick={handleNextOrRestart}>
+            {status === "win" ? "Next Round" : "Restart Game"}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   </div>
   )
 }
 
-// ✅ Shuffle helper
+// Shuffle helper function
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr]
   for (let i = a.length - 1; i > 0; i--) {
