@@ -32,7 +32,9 @@ const games = [
   { title: "Color SpectrumFlashpoint", slug: "color-spectrumflashpoint", description: "That moves beyond simple color matching into the complexities of blending, transparency, and stacking order" },
   { title: "Color Spectral Echo", slug: "color-spectralecho", description: "Translate memory of light (RGB) into the required subtractive filters (CMY) under time pressure" },
   { title: "Color Chroma Drift", slug: "color-chromadrift", description: "Puzzle game played entirely in an environment that simulates a specific type of color blindness" },
-  { title: "Color Pigment Mixer Tycoon", slug: "color-pigmentmixertycoon", description: "A resource management and strategy game based on the economics of real-world pigments" },
+  { title: "Color Chroma Gauntlet", slug: "color-chroma", description: "A resource management and strategy game based on the economics of real-world pigments" },
+  { title: "Color Cascade Puzzle", slug: "color-cascadepuzzle", description: "Challenge the player's spatial awareness along with their understanding of color mixing theory" },
+  { title: "Color Drift Memory", slug: "color-driftmemory", description: "Challenge the player's spatial awareness along with their understanding of color mixing theory" },
 ]
 
 export default function GameHomePage() {
