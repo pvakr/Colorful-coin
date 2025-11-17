@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useReducer, useState, useMemo, useEffect } from 'react';
 import { Factory, DollarSign, Gem, TrendingUp, Zap, ShoppingCart, CheckCircle, XCircle, RefreshCcw } from 'lucide-react';
 
