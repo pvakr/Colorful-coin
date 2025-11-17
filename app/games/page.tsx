@@ -22,7 +22,6 @@ const games = [
   { title: "Color Sort", slug: "color-sort", description: "Match rhythm and frequency with colors" },
   { title: "Color translator", slug: "color-translator", description: "Color Communication and Naming" },
   { title: "Color Shadow", slug: "color-shadow", description: "Tests deep visual recall and the ability to mentally" },
-  { title: "Color Hue Flow", slug: "color-hue-flow", description: "Spatial Logic & Subtractive Mixing" },
   { title: "Color Spectral", slug: "color-spectral", description: "A long horizontal strip contains a color gradient with one tile slightly out of order" },
   { title: "Color Synesthesia", slug: "color-synesthesia", description: "Sound/Emotion MappingThe player navigates a maze or grid" },
   { title: "Color Fusion Lab", slug: "color-fusionlab", description: "Challenges precision and understanding of digital color space" },
