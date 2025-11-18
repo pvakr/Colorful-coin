@@ -50,6 +50,19 @@ export default function HomePage() {
                 Coloring
               </motion.span>
             </Link>
+
+            <Link href="/artchallenge" className="focus:outline-none">
+              <motion.span
+                className="px-8 py-3 inline-block rounded-full font-semibold text-white text-lg shadow-lg transition-all duration-300 bg-gradient-to-r from-cyan-500 via-blue-500 to-purple-500 hover:from-cyan-400 hover:via-blue-400 hover:to-purple-400 hover:shadow-xl"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.97 }}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6, delay: 0.5 }}
+              >
+                Art Challenge
+              </motion.span>
+            </Link>
           </div>
         </nav>
 
