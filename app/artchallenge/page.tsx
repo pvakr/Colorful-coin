@@ -975,8 +975,6 @@ const App: React.FC = () => {
                     onModalClose={handleModalClose}
                 />
             )}
-
-            <p className="mt-8 text-sm text-gray-500">App ID: {appId}</p>
         </div>
     );
 };
