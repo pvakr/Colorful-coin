@@ -25,13 +25,14 @@ const GAME_COLORS = {
 // --- TYPE DEFINITIONS ---
 
 type ColorKey = keyof typeof GAME_COLORS;
-type Grid = (ColorKey | null)[][]; // The main 18x18 board
+// CORRECTED TYPE: 2D array of (ColorKey or null)
+type Grid = (ColorKey | null)[][]; 
 type Tile = {
     id: number;
     colorMap: Map<string, ColorKey>; // Maps coordinate string "r,c" to ColorKey
     shape: [number, number][]; // Relative coordinates [row, col]
     used: boolean;
-    color: ColorKey; // FIX: Re-added the 'color' property to satisfy type checker
+    color: ColorKey; 
 };
 type TileSet = Tile[];
 
@@ -120,8 +121,8 @@ const generateRandomTileSet = (initialId: number): TileSet => {
             }
         });
 
-        // The 'color' property is now the color of the first block for legacy type compatibility, 
-        // but the actual colors are in colorMap.
+        // The 'color' property is the color of the first block for type compatibility, 
+        // actual colors are in colorMap.
         const defaultColor = colorMap.values().next().value as ColorKey || getRandomColor();
 
         tileSet.push({
@@ -137,14 +138,13 @@ const generateRandomTileSet = (initialId: number): TileSet => {
 
 /**
  * Finds groups of 3 or more adjacent (orthogonally connected) tiles of the same color.
- * Uses a modified Breadth-First Search (BFS) approach.
  */
 const findGroupMatches = (grid: Grid): [number, number][] => {
     const rows = grid.length;
     const cols = grid[0].length;
     const visited: boolean[][] = Array(rows).fill(null).map(() => Array(cols).fill(false));
     const finalTilesToClear: Set<string> = new Set();
-    const directions = [[0, 1], [0, -1], [1, 0], [-1, 0]]; // Right, Left, Down, Up
+    const directions = [[0, 1], [0, -1], [1, 0], [-1, 0]]; 
 
     for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
@@ -230,17 +230,23 @@ const TilePreview: React.FC<{
     // Determine preview style based on used state
     const opacity = tile.used ? 0.3 : 1;
     const cursor = tile.used ? 'cursor-default' : 'cursor-grab';
-    const dragProps = draggable && !tile.used ? { draggable: true, onDragStart: (e: React.DragEvent<HTMLDivElement>) => onDragStart(e, tile) } : {};
+    
+    // Drag properties applied to the inner grid div for cleaner drag image
+    const dragProps = draggable && !tile.used ? { 
+        draggable: true, 
+        onDragStart: (e: React.DragEvent<HTMLDivElement>) => onDragStart(e, tile) 
+    } : {};
 
     return (
         <div
-            className={`p-2 rounded-lg transition-opacity duration-300 ${cursor}`}
+            className={`transition-opacity duration-300 ${cursor}`}
             style={{ 
                 opacity, 
+                // Set width/height of the outer container to exactly fit the blocks,
                 width: `${tileW * TILE_SIZE * scale}px`, 
                 height: `${tileH * TILE_SIZE * scale}px`,
+                padding: '0px'
             }}
-            {...dragProps}
         >
             <div 
                 className="grid"
@@ -248,10 +254,9 @@ const TilePreview: React.FC<{
                     gridTemplateColumns: `repeat(${tileW}, ${TILE_SIZE * scale}px)`,
                     gridTemplateRows: `repeat(${tileH}, ${TILE_SIZE * scale}px)`,
                 }}
+                {...dragProps} 
             >
                 {tile.shape.map(([r, c], index) => {
-                    // Get the color for the specific block using its relative coordinates
-                    // FIX: Ensure colorKey is correctly typed as ColorKey
                     const colorKey = tile.colorMap.get(`${r},${c}`) || tile.color; 
                     
                     return (
@@ -259,7 +264,6 @@ const TilePreview: React.FC<{
                             key={index}
                             className="rounded-md shadow-md border-2 border-white transition-transform duration-100"
                             style={{
-                                // Adjust grid area based on minimum coordinates to ensure piece starts at top-left of its container
                                 gridArea: `${r - minR + 1} / ${c - minC + 1} / span 1 / span 1`, 
                                 backgroundColor: GAME_COLORS[colorKey],
                                 width: `${TILE_SIZE * scale}px`,
@@ -295,7 +299,7 @@ const MainGrid: React.FC<{
         ? 'ring-green-500' // Valid placement: GREEN
         : placementIsValid === false
         ? 'ring-red-500'   // Invalid placement: RED
-        : 'ring-blue-500'; // Default/unused state (shouldn't happen during drag)
+        : 'ring-blue-500'; // Default/unused state
 
     const highlightBgColor = placementIsValid === true 
         ? 'bg-green-100/70' 
@@ -318,7 +322,6 @@ const MainGrid: React.FC<{
                         const isHighlighted = highlightSet.has(cellId);
                         const isMatch = matchSet.has(cellId);
 
-                        // FIX: Ensure colorKey is treated as ColorKey for indexing GAME_COLORS
                         let backgroundColor = colorKey ? GAME_COLORS[colorKey as ColorKey] : '#E0E0E0';
                         
                         let className = "relative transition-all duration-200 border border-gray-300/50 rounded-sm";
@@ -364,30 +367,61 @@ const MainGrid: React.FC<{
 };
 
 
+// --- NEW COMPONENT: Hidden Drag Image (to suppress default preview box) ---
+const HiddenDragImage = React.forwardRef<HTMLDivElement, {}>(({}, ref) => (
+    <div
+        ref={ref}
+        style={{
+            position: 'fixed',
+            top: -100, // Move it off-screen
+            left: -100,
+            width: 1, // Make it very small
+            height: 1,
+            backgroundColor: 'transparent',
+        }}
+    />
+));
+HiddenDragImage.displayName = 'HiddenDragImage';
+
+
 // --- MAIN APP COMPONENT ---
 
 const App: React.FC = () => {
     // Game State
-    const initialGrid = Array(GRID_SIZE).fill(null).map(() => Array(GRID_SIZE).fill(null));
+    // FIX (TypeScript): Correctly type the initialization of the 2D array
+    const initialGrid: Grid = Array(GRID_SIZE).fill(0).map(() => 
+        Array(GRID_SIZE).fill(null) as (ColorKey | null)[]
+    );
+    
     const [grid, setGrid] = useState<Grid>(initialGrid);
     const [score, setScore] = useState(0);
     const [highScore, setHighScore] = useState(0);
-    const [tileSet, setTileSet] = useState<TileSet>(generateRandomTileSet(0));
+    
+    // FIX (Hydration): Initialize tileSet as an empty array.
+    const [tileSet, setTileSet] = useState<TileSet>([]); 
+    
     const [isGameOver, setIsGameOver] = useState(false);
-    const [tileIdCounter, setTileIdCounter] = useState(NUM_PATTERNS); // Used for unique tile IDs
+    const [tileIdCounter, setTileIdCounter] = useState(NUM_PATTERNS);
 
     // Drag State
     const [draggedTile, setDraggedTile] = useState<Tile | null>(null);
     const [highlightCells, setHighlightCells] = useState<[number, number][]>([]);
-    const [placementIsValid, setPlacementIsValid] = useState<boolean | null>(null); // NEW: State to track validity
+    const [placementIsValid, setPlacementIsValid] = useState<boolean | null>(null);
     
+    // FIX (Drag Image): Ref for the off-screen element used to suppress the default drag box.
+    const dragImageRef = React.useRef<HTMLDivElement>(null);
+
     // Match State (for visual feedback)
     const [matchCells, setMatchCells] = useState<[number, number][]>([]);
 
-    // --- GAME START/RESET ---
+    // --- GAME START/RESET & HYDRATION FIX ---
 
+    // FIX (Hydration): Move tile and score initialization to run only on the client.
     useEffect(() => {
-        // Load high score from local storage (or Firestore in a full app)
+        // Initialize tiles on mount
+        setTileSet(generateRandomTileSet(0));
+
+        // Load high score
         const savedHighScore = localStorage.getItem('hexaMatchHighScore');
         if (savedHighScore) {
             setHighScore(parseInt(savedHighScore));
@@ -395,9 +429,12 @@ const App: React.FC = () => {
     }, []);
 
     const resetGame = useCallback(() => {
-        setGrid(Array(GRID_SIZE).fill(null).map(() => Array(GRID_SIZE).fill(null)));
+        setGrid(Array(GRID_SIZE).fill(0).map(() => 
+            Array(GRID_SIZE).fill(null) as (ColorKey | null)[]
+        ));
         setScore(0);
-        setTileSet(generateRandomTileSet(0));
+        // Generate new tiles immediately upon client-side reset
+        setTileSet(generateRandomTileSet(0)); 
         setTileIdCounter(NUM_PATTERNS);
         setIsGameOver(false);
         setMatchCells([]);
@@ -409,16 +446,15 @@ const App: React.FC = () => {
 
     const handleDragStart = (e: React.DragEvent<HTMLDivElement>, tile: Tile) => {
         setDraggedTile(tile);
-        setPlacementIsValid(null); // Reset validity state on drag start
-        // Set drag image data, though often not perfectly visible in browser environments
+        setPlacementIsValid(null);
         e.dataTransfer.setData("text/plain", tile.id.toString());
         
-        // Optional: Hide drag image preview (sometimes necessary for cleaner look)
-        const img = new Image();
-        img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
-        e.dataTransfer.setDragImage(img, 0, 0);
+        // FIX (Drag Image): Use the hidden off-screen element as the drag image 
+        // to prevent the default white box from appearing.
+        if (dragImageRef.current) {
+            e.dataTransfer.setDragImage(dragImageRef.current, 0, 0);
+        }
         
-        // Fix: Explicitly set drop effect
         e.dataTransfer.dropEffect = 'move';
     };
     
@@ -479,7 +515,6 @@ const App: React.FC = () => {
     
     const applyPlacement = useCallback(async (tile: Tile, rootR: number, rootC: number) => {
         let newGrid = grid.map(row => [...row]); // Deep copy of the grid
-        // Start score delta at 0, no longer awarding points just for placement
         let scoreDelta = 0; 
 
         // 1. Place the tiles
@@ -551,15 +586,15 @@ const App: React.FC = () => {
             checkGameOver(finalGrid, newTileSet);
         }
         
-    }, [grid, score, highScore, tileSet]);
+    }, [grid, score, highScore, tileSet, tileIdCounter]);
 
 
     const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>, r: number, c: number) => {
         e.preventDefault();
-        const droppedTile = draggedTile; // Use the state set during dragStart
-        setDraggedTile(null); // Clear drag state
-        setHighlightCells([]); // Clear visual preview
-        setPlacementIsValid(null); // Clear validity state
+        const droppedTile = draggedTile; 
+        setDraggedTile(null); 
+        setHighlightCells([]); 
+        setPlacementIsValid(null); 
 
         if (droppedTile && isValidPlacement(droppedTile, r, c)) {
             applyPlacement(droppedTile, r, c);
@@ -572,26 +607,38 @@ const App: React.FC = () => {
      */
     const checkGameOver = useCallback((currentGrid: Grid, currentTileSet: TileSet) => {
         // Filter out used tiles
-        const remainingTiles = currentTileSet.filter(t => !t.used);
+        let remainingTiles = currentTileSet.filter(t => !t.used);
         
-        // If all tiles are used, we rely on the logic in applyPlacement to generate a new set and check immediately after.
-        if (remainingTiles.length === 0 && currentTileSet.length === NUM_PATTERNS && currentTileSet.every(t => !t.used)) {
-             // This is the check for a newly generated set that immediately results in Game Over
-             if (!remainingTiles.length) {
-                // If the new set is generated, remainingTiles will be 3, but their `used` status is false.
-                // We check the new set against the current board.
-                remainingTiles.push(...currentTileSet);
-             }
+        // If no tiles are left but the tileSet size matches NUM_PATTERNS, it means a new set
+        // was just generated and we should check those new tiles.
+        if (remainingTiles.length === 0 && currentTileSet.length === NUM_PATTERNS && currentTileSet.some(t => !t.used)) {
+             remainingTiles = currentTileSet;
         }
         
-        if (remainingTiles.length === 0) return; // Wait for new set to generate
+        if (remainingTiles.length === 0) return; 
 
         let canPlaceAnyTile = false;
 
         for (const tile of remainingTiles) {
             for (let r = 0; r < GRID_SIZE; r++) {
                 for (let c = 0; c < GRID_SIZE; c++) {
-                    if (isValidPlacement(tile, r, c)) {
+                    // Check if this specific tile can be placed at (r, c)
+                    const canPlace = (
+                        !tile.used && // Must be an unused tile
+                        r >= 0 && r < GRID_SIZE && 
+                        c >= 0 && c < GRID_SIZE &&
+                        tile.shape.every(([dr, dc]) => {
+                            const tr = r + dr;
+                            const tc = c + dc;
+                            return (
+                                tr >= 0 && tr < GRID_SIZE && 
+                                tc >= 0 && tc < GRID_SIZE && 
+                                currentGrid[tr][tc] === null
+                            );
+                        })
+                    );
+                    
+                    if (canPlace) {
                         canPlaceAnyTile = true;
                         break;
                     }
@@ -604,13 +651,12 @@ const App: React.FC = () => {
         if (!canPlaceAnyTile) {
             setIsGameOver(true);
         }
-    }, [isValidPlacement]);
+    }, []);
 
 
     // Effect to check for game over whenever tileset or grid changes
     useEffect(() => {
         if (!isGameOver && tileSet.length > 0) {
-            // Only perform game over check when the user interacts or a new set is generated
             checkGameOver(grid, tileSet);
         }
     }, [tileSet, grid, isGameOver, checkGameOver]);
@@ -621,6 +667,9 @@ const App: React.FC = () => {
     return (
         <div className="min-h-screen p-6 font-sans flex flex-col items-center">
             
+            {/* Hidden component used to suppress the default drag image */}
+            <HiddenDragImage ref={dragImageRef} />
+
             {/* Header and Scoreboard */}
             <div className="w-full max-w-4xl flex justify-between items-center mb-8 p-4 bg-white rounded-xl shadow-2xl border-b-4 border-indigo-400">
                 <h1 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 tracking-wide">
@@ -630,11 +679,10 @@ const App: React.FC = () => {
                 <div className="flex items-center space-x-6 text-center">
                     {/* Home Button */}
                     <a 
-                        href="/" /* Simulates navigation to the home path */
+                        href="/games" 
                         className="p-3 rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors shadow-md hover:shadow-lg"
                         aria-label="Go to Home"
                     >
-                        {/* New Home SVG Icon */}
                         <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
                         </svg>
@@ -661,7 +709,7 @@ const App: React.FC = () => {
                         onDragOver={handleDragOver}
                         highlightCells={highlightCells}
                         matchCells={matchCells}
-                        placementIsValid={placementIsValid} /* Passed validity state */
+                        placementIsValid={placementIsValid}
                     />
                 </div>
                 
@@ -673,15 +721,20 @@ const App: React.FC = () => {
                             className="flex flex-col items-center justify-around space-y-8" 
                             onDragEnd={handleDragEnd}
                         >
-                            {tileSet.map((tile) => (
-                                <TilePreview
-                                    key={tile.id}
-                                    tile={tile}
-                                    draggable={true}
-                                    onDragStart={handleDragStart}
-                                    scale={1.3} /* Increased scale for larger drag target */
-                                />
-                            ))}
+                            {/* Conditional rendering to prevent rendering tiles before client hydration */}
+                            {tileSet.length === 0 ? (
+                                <div className="py-12 text-gray-500">Generating initial tiles...</div>
+                            ) : (
+                                tileSet.map((tile) => (
+                                    <TilePreview
+                                        key={tile.id}
+                                        tile={tile}
+                                        draggable={true}
+                                        onDragStart={handleDragStart}
+                                        scale={1.3}
+                                    />
+                                ))
+                            )}
                         </div>
                     </div>
                     

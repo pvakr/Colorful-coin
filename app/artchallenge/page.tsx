@@ -678,6 +678,7 @@ const GameHeader: React.FC<{ onHomeClick: () => void, gameMode: GameMode }> = ({
                     Hexa-Art Challenge
                 </h1>
             </button>
+            
         </header>
     );
 };
