@@ -875,17 +875,17 @@ const App: React.FC = () => {
   // --- RENDER ---
 
   return (
-    <div className="min-h-screen p-6 font-sans flex flex-col items-center bg-gradient-to-br from-slate-100 to-slate-200">
+    <div className="min-h-screen p-6 font-sans flex flex-col items-center from-slate-100 to-slate-200">
       {/* Header and Scoreboard */}
-      <div className="w-full max-w-6xl flex justify-between items-center mb-8 p-4 bg-white rounded-xl shadow-xl border-b-4 border-indigo-400">
-        <h1 className="text-3xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 tracking-wide">
+      <div className="w-full max-w-6xl flex justify-between items-center mb-8 p-4  rounded-xl shadow-xl border-b-4 ">
+        <h1 className="text-3xl md:text-4xl font-extrabold text-transparent bg-clip-text">
           Color Cascade
         </h1>
 
         <div className="flex items-center space-x-6 text-center">
           <a
             href="/games"
-            className="p-3 rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
+            className="p-3 rounded-full text-gray-700 hover:bg-gray-200 transition-colors"
             aria-label="Go to Home"
           >
             <svg
