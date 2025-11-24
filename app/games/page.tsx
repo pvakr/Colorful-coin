@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button"
 const games = [
   { title: "Color Cascade", slug: "color-cascade", description: "Tactical Match-3: Strategically place colored blocks to create chains of three or more, triggering spectacular cascades and massive score bonuses." },
   { title: "Color Drift Memory", slug: "color-driftmemory", description: "Spatial & Subtractive Challenge: Test your spatial memory and deep understanding of color mixing theory as hues subtly drift and blend on the grid." },
+  { title: "Color Bubble Shooter", slug: "color-bubbleshooter", description: "Spatial & Subtractive Challenge: Test your spatial memory and deep understanding of color mixing theory as hues subtly drift and blend on the grid." },
   { title: "Color Rush", slug: "color-rush", description: "High-Octane Reaction: A lightning-fast game where you must react instantly to shifting hues and flashing color prompts before the timer runs out." },
   { title: "Color Memory", slug: "color-memory", description: "Sequential Recall: Sharpen your short-term memory by perfectly recalling increasingly complex and lengthy sequences of flashing colors." },
   { title: "Color Match", slug: "quick-match", description: "Rhythm-Based Frequency: Match the rhythm and frequency of a pulsing beat by selecting the corresponding color to stay in sync." },
