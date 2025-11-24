@@ -7,8 +7,8 @@ declare const __app_id: string | undefined;
 
 // --- CONSTANTS & CONFIGURATION ---
 
-const GRID_SIZE = 18;
-const TILE_SIZE = 44;
+const GRID_SIZE = 15; // Decreased grid size
+const TILE_SIZE = 38; // Decreased tile size
 const GAP_SIZE = 3;
 const NUM_PATTERNS = 3;
 
@@ -407,16 +407,17 @@ const MainGrid: React.FC<{
             const isHighlighted = highlightSet.has(cellId);
             const isMatch = matchSet.has(cellId);
 
+            // Removed default background color for empty cells
             let backgroundColor = colorKey
               ? GAME_COLORS[colorKey as ColorKey]
-              : "rgba(255, 255, 255, 0.6)";
+              : "transparent"; 
 
             let className =
-              "relative transition-all duration-150 rounded-sm";
+              "relative transition-all duration-150 rounded-sm border border-gray-300/50"; // Added border for grid visibility
             let transformStyle = "";
 
             if (isHighlighted && placementIsValid) {
-              className += ` ring-4 ring-inset ${highlightRingColor} ${highlightBgColor} opacity-100`;
+              className = `relative transition-all duration-150 rounded-sm border ring-4 ring-inset ${highlightRingColor} ${highlightBgColor} opacity-100`;
               transformStyle = "scale(1.1)";
             }
 
@@ -430,7 +431,8 @@ const MainGrid: React.FC<{
             }
 
             if (!colorKey && !isHighlighted && !isMatch) {
-              className += " hover:bg-white/80";
+              // Ensure empty cell has a distinct hover effect
+              className += " hover:bg-white/50";
             }
 
             if (colorKey && !isHighlighted && !isMatch) {
@@ -493,8 +495,6 @@ const App: React.FC = () => {
     [number, number][]
   >([]);
 
-  // Removed: LLM State (hintText, isHintLoading)
-
   useEffect(() => {
     setTileSet(generateRandomTileSet(0));
     const savedHighScore =
@@ -521,7 +521,6 @@ const App: React.FC = () => {
     setIsGameOver(false);
     setMatchCells([]);
     setHighlightCells([]);
-    // Removed: setHintText call
   }, []);
 
   // --- DRAG LOGIC ---
@@ -593,17 +592,21 @@ const App: React.FC = () => {
     dragGhost.style.left = "-1000px";
     dragGhost.style.opacity = "1";
     dragGhost.style.backgroundColor = "transparent";
-    dragGhost.style.transform = "scale(0.909)";
+    // Scale factor applied to drag image must match the preview scale (1.1)
+    const DRAG_SCALE = 1.1; 
+    dragGhost.style.transform = `scale(${1 / DRAG_SCALE})`;
     dragGhost.style.transformOrigin = "top left";
     dragGhost.style.pointerEvents = "none";
 
     document.body.appendChild(dragGhost);
 
-    // This offset for the drag image is still necessary:
+    // The offset here needs to compensate for the fact that the drag image 
+    // is now scaled down (by 1/1.1), so we scale the mouse offset by that factor too.
+    const dragOffsetScale = 1 / DRAG_SCALE;
     e.dataTransfer.setDragImage(
       dragGhost,
-      localX * 0.909,
-      localY * 0.909
+      localX * dragOffsetScale,
+      localY * dragOffsetScale
     );
 
     setTimeout(() => {
@@ -647,7 +650,6 @@ const App: React.FC = () => {
       e.preventDefault();
       if (!draggedTile) return;
       if (!dragAnchor) {
-        // Fallback or initialization error
         e.dataTransfer.dropEffect = "none";
         return;
       }
@@ -870,15 +872,13 @@ const App: React.FC = () => {
     }
   }, [tileSet, grid, isGameOver, checkGameOver]);
 
-  // Removed: GEMINI API HINT FUNCTION
-
   // --- RENDER ---
 
   return (
     <div className="min-h-screen p-6 font-sans flex flex-col items-center from-slate-100 to-slate-200">
       {/* Header and Scoreboard */}
-      <div className="w-full max-w-6xl flex justify-between items-center mb-8 p-4  rounded-xl shadow-xl border-b-4 ">
-        <h1 className="text-3xl md:text-4xl font-extrabold text-transparent bg-clip-text">
+      <div className="w-full max-w-6xl flex justify-between items-center mb-8 p-4 bg-white rounded-xl shadow-xl border-b-4 border-indigo-400">
+        <h1 className="text-3xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 tracking-wide">
           Color Cascade
         </h1>
 
@@ -963,7 +963,7 @@ const App: React.FC = () => {
             </div>
           </div>
 
-          {/* New Game Button (relocated from LLM hint block) */}
+          {/* New Game Button */}
           <button
             onClick={resetGame}
             className="w-full py-4 text-lg font-bold rounded-xl bg-indigo-600 text-white shadow-lg shadow-indigo-200 hover:bg-indigo-700 active:bg-indigo-800 transition-all transform active:scale-95"
