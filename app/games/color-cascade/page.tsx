@@ -1,787 +1,1007 @@
 "use client";
 
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from "react";
 
 // --- GLOBAL TYPE DECLARATIONS ---
 declare const __app_id: string | undefined;
 
 // --- CONSTANTS & CONFIGURATION ---
 
-const GRID_SIZE = 18; // Adjusted grid size to 18x18
-const TILE_SIZE = 40; // Max tile size for easy dragging
+const GRID_SIZE = 18;
+const TILE_SIZE = 44;
+const GAP_SIZE = 3;
 const NUM_PATTERNS = 3;
 
 // Game Colors (Simplified to RGB spectrum colors)
 const GAME_COLORS = {
-    'red': '#FF4545',    // Red
-    'green': '#4CAF50',  // Green
-    'blue': '#2196F3',   // Blue
-    'yellow': '#FFEB3B', // Yellow
-    'cyan': '#00BCD4',   // Cyan
-    'purple': '#9C27B0', // Magenta:Violet
-    'orange': '#FF9800'  // Orange
+  red: "#FF4545", // Red
+  green: "#4CAF50", // Green
+  blue: "#2196F3", // Blue
+  yellow: "#FFEB3B", // Yellow
+  cyan: "#00BCD4", // Cyan
+  purple: "#9C27B0", // Magenta:Violet
+  orange: "#FF9800", // Orange
 };
 
 // --- TYPE DEFINITIONS ---
 
 type ColorKey = keyof typeof GAME_COLORS;
-// CORRECTED TYPE: 2D array of (ColorKey or null)
-type Grid = (ColorKey | null)[][]; 
+type Grid = (ColorKey | null)[][];
 type Tile = {
-    id: number;
-    colorMap: Map<string, ColorKey>; // Maps coordinate string "r,c" to ColorKey
-    shape: [number, number][]; // Relative coordinates [row, col]
-    used: boolean;
-    color: ColorKey; 
+  id: number;
+  colorMap: Map<string, ColorKey>; // Maps coordinate string "r,c" to ColorKey
+  shape: [number, number][]; // Relative coordinates [row, col]
+  used: boolean;
+  color: ColorKey;
 };
 type TileSet = Tile[];
 
 // --- UTILITIES ---
 
 const getRandomColor = (exclude: ColorKey | null = null): ColorKey => {
-    const colorKeys = Object.keys(GAME_COLORS) as ColorKey[];
-    let color: ColorKey;
-    do {
-        color = colorKeys[Math.floor(Math.random() * colorKeys.length)];
-    } while (color === exclude);
-    return color;
+  const colorKeys = Object.keys(GAME_COLORS) as ColorKey[];
+  let color: ColorKey;
+  do {
+    color = colorKeys[Math.floor(Math.random() * colorKeys.length)];
+  } while (color === exclude);
+  return color;
 };
 
-/**
- * Generates a set of random, contiguous tiles (pieces) with a max size of 4 blocks.
- * Colors are mixed to ensure no piece contains more than 2 contiguous blocks of the same color.
- */
 const generateRandomTileSet = (initialId: number): TileSet => {
-    // Shapes are max 4 blocks and guaranteed safe (no 3+ inline blocks)
-    const safeShapes: [number, number][][] = [
-        [[0, 0]],                                        // 1-block
-        [[0, 0], [0, 1]],                                // 2-block Horizontal
-        [[0, 0], [1, 0]],                                // 2-block Vertical
-        [[0, 0], [1, 0], [0, 1]],                        // 3-block L
-        [[0, 0], [0, 1], [1, 1]],                        // 3-block L rotated
-        [[0, 1], [1, 0], [1, 1]],                        // 3-block T
-        [[0, 0], [0, 1], [1, 0], [1, 1]],                // 4-block 2x2 Square
-        [[0, 0], [0, 1], [1, 1], [1, 2]],                // 4-block Z
-        [[0, 1], [1, 0], [1, 1], [2, 1]],                // 4-block T
-        [[0, 0], [1, 0], [1, 1], [2, 1]],                // 4-block S
-    ];
+  // Shapes are max 4 blocks
+  const safeShapes: [number, number][][] = [
+    [[0, 0]],
+    [
+      [0, 0],
+      [0, 1],
+    ],
+    [
+      [0, 0],
+      [1, 0],
+    ],
+    [
+      [0, 0],
+      [1, 0],
+      [0, 1],
+    ],
+    [
+      [0, 0],
+      [0, 1],
+      [1, 1],
+    ],
+    [
+      [0, 1],
+      [1, 0],
+      [1, 1],
+    ],
+    [
+      [0, 0],
+      [0, 1],
+      [1, 0],
+      [1, 1],
+    ],
+    [
+      [0, 0],
+      [0, 1],
+      [1, 1],
+      [1, 2],
+    ],
+    [
+      [0, 1],
+      [1, 0],
+      [1, 1],
+      [2, 1],
+    ],
+    [
+      [0, 0],
+      [1, 0],
+      [1, 1],
+      [2, 1],
+    ],
+  ];
 
-    const tileSet: TileSet = [];
+  const tileSet: TileSet = [];
 
-    for (let i = 0; i < NUM_PATTERNS; i++) {
-        const shape = safeShapes[Math.floor(Math.random() * safeShapes.length)];
-        const colorMap: Map<string, ColorKey> = new Map();
-        
-        // Use a temporary grid to check for match-3 safety *during* color assignment
-        const tempGrid: (ColorKey | null)[][] = Array(4).fill(null).map(() => Array(4).fill(null));
-        const [minR, minC] = shape.reduce(([minR, minC], [r, c]) => 
-            [Math.min(minR, r), Math.min(minC, c)], [Infinity, Infinity]);
-        
-        // Sort shape to ensure adjacent blocks are colored sequentially (more stable randomization)
-        const sortedShape = [...shape].sort((a, b) => a[0] === b[0] ? a[1] - b[1] : a[0] - b[0]);
-        
-        sortedShape.forEach(([r, c]) => {
-            let placed = false;
-            let attempts = 0;
-            
-            // Relative coordinates for the temp grid
-            const tr = r - minR;
-            const tc = c - minC;
-            
-            while (!placed && attempts < 20) {
-                attempts++;
-                const newColor = getRandomColor();
-                
-                let createsMatch3 = false;
-                
-                // --- Match-3 safety check relative to the temporary piece grid ---
-                
-                // Horizontal check: (X-2, X-1, C) or (X-1, C, X+1) or (C, X+1, X+2)
-                if (tempGrid[tr]?.[tc - 1] === newColor && tempGrid[tr]?.[tc - 2] === newColor) createsMatch3 = true;
-                if (tempGrid[tr]?.[tc + 1] === newColor && tempGrid[tr]?.[tc + 2] === newColor) createsMatch3 = true;
-                if (tempGrid[tr]?.[tc - 1] === newColor && tempGrid[tr]?.[tc + 1] === newColor) createsMatch3 = true;
-                
-                // Vertical check
-                if (tempGrid[tr - 1]?.[tc] === newColor && tempGrid[tr - 2]?.[tc] === newColor) createsMatch3 = true;
-                if (tempGrid[tr + 1]?.[tc] === newColor && tempGrid[tr + 2]?.[tc] === newColor) createsMatch3 = true;
-                if (tempGrid[tr - 1]?.[tc] === newColor && tempGrid[tr + 1]?.[tc] === newColor) createsMatch3 = true;
+  for (let i = 0; i < NUM_PATTERNS; i++) {
+    const shape =
+      safeShapes[Math.floor(Math.random() * safeShapes.length)];
+    const colorMap: Map<string, ColorKey> = new Map();
 
-                if (!createsMatch3) {
-                    // Place the color in the temp grid and map
-                    tempGrid[tr][tc] = newColor;
-                    colorMap.set(`${r},${c}`, newColor);
-                    placed = true;
-                }
-            }
-            // Fallback for safety (should rarely hit this with 20 attempts)
-            if (!placed) {
-                // Force a different color if necessary
-                const safeColor = getRandomColor(tempGrid[tr][tc - 1] || tempGrid[tr - 1][tc]);
-                colorMap.set(`${r},${c}`, safeColor);
-            }
-        });
+    const tempGrid: (ColorKey | null)[][] = Array(4)
+      .fill(null)
+      .map(() => Array(4).fill(null));
+    const [minR, minC] = shape.reduce(
+      ([minR, minC], [r, c]) => [Math.min(minR, r), Math.min(minC, c)],
+      [Infinity, Infinity]
+    );
 
-        // The 'color' property is the color of the first block for type compatibility, 
-        // actual colors are in colorMap.
-        const defaultColor = colorMap.values().next().value as ColorKey || getRandomColor();
+    const sortedShape = [...shape].sort((a, b) =>
+      a[0] === b[0] ? a[1] - b[1] : a[0] - b[0]
+    );
 
-        tileSet.push({
-            id: initialId + i,
-            colorMap: colorMap,
-            color: defaultColor, 
-            shape: shape,
-            used: false,
-        });
-    }
-    return tileSet;
+    sortedShape.forEach(([r, c]) => {
+      let placed = false;
+      let attempts = 0;
+
+      const tr = r - minR;
+      const tc = c - minC;
+
+      while (!placed && attempts < 20) {
+        attempts++;
+        const newColor = getRandomColor();
+
+        let createsMatch3 = false;
+
+        // Horizontal check
+        if (
+          tempGrid[tr]?.[tc - 1] === newColor &&
+          tempGrid[tr]?.[tc - 2] === newColor
+        )
+          createsMatch3 = true;
+        if (
+          tempGrid[tr]?.[tc + 1] === newColor &&
+          tempGrid[tr]?.[tc + 2] === newColor
+        )
+          createsMatch3 = true;
+        if (
+          tempGrid[tr]?.[tc - 1] === newColor &&
+          tempGrid[tr]?.[tc + 1] === newColor
+        )
+          createsMatch3 = true;
+
+        // Vertical check
+        if (
+          tempGrid[tr - 1]?.[tc] === newColor &&
+          tempGrid[tr - 2]?.[tc] === newColor
+        )
+          createsMatch3 = true;
+        if (
+          tempGrid[tr + 1]?.[tc] === newColor &&
+          tempGrid[tr + 2]?.[tc] === newColor
+        )
+          createsMatch3 = true;
+        if (
+          tempGrid[tr - 1]?.[tc] === newColor &&
+          tempGrid[tr + 1]?.[tc] === newColor
+        )
+          createsMatch3 = true;
+
+        if (!createsMatch3) {
+          tempGrid[tr][tc] = newColor;
+          colorMap.set(`${r},${c}`, newColor);
+          placed = true;
+        }
+      }
+      if (!placed) {
+        const safeColor = getRandomColor(
+          tempGrid[tr][tc - 1] || tempGrid[tr - 1][tc]
+        );
+        colorMap.set(`${r},${c}`, safeColor);
+      }
+    });
+
+    const defaultColor =
+      (colorMap.values().next().value as ColorKey) || getRandomColor();
+
+    tileSet.push({
+      id: initialId + i,
+      colorMap: colorMap,
+      color: defaultColor,
+      shape: shape,
+      used: false,
+    });
+  }
+  return tileSet;
 };
 
-/**
- * Finds groups of 3 or more adjacent (orthogonally connected) tiles of the same color.
- */
 const findGroupMatches = (grid: Grid): [number, number][] => {
-    const rows = grid.length;
-    const cols = grid[0].length;
-    const visited: boolean[][] = Array(rows).fill(null).map(() => Array(cols).fill(false));
-    const finalTilesToClear: Set<string> = new Set();
-    const directions = [[0, 1], [0, -1], [1, 0], [-1, 0]]; 
+  const rows = grid.length;
+  const cols = grid[0].length;
+  const visited: boolean[][] = Array(rows)
+    .fill(null)
+    .map(() => Array(cols).fill(false));
+  const finalTilesToClear: Set<string> = new Set();
+  const directions = [
+    [0, 1],
+    [0, -1],
+    [1, 0],
+    [-1, 0],
+  ];
 
-    for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-            const color = grid[r][c];
-            if (!color || visited[r][c]) continue;
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const color = grid[r][c];
+      if (!color || visited[r][c]) continue;
 
-            const currentCluster: [number, number][] = [];
-            const queue: [number, number][] = [[r, c]];
-            visited[r][c] = true;
+      const currentCluster: [number, number][] = [];
+      const queue: [number, number][] = [[r, c]];
+      visited[r][c] = true;
 
-            let head = 0;
-            while (head < queue.length) {
-                const [cr, cc] = queue[head++];
-                currentCluster.push([cr, cc]);
+      let head = 0;
+      while (head < queue.length) {
+        const [cr, cc] = queue[head++];
+        currentCluster.push([cr, cc]);
 
-                for (const [dr, dc] of directions) {
-                    const nr = cr + dr;
-                    const nc = cc + dc;
+        for (const [dr, dc] of directions) {
+          const nr = cr + dr;
+          const nc = cc + dc;
 
-                    if (
-                        nr >= 0 && nr < rows &&
-                        nc >= 0 && nc < cols &&
-                        !visited[nr][nc] &&
-                        grid[nr][nc] === color
-                    ) {
-                        visited[nr][nc] = true;
-                        queue.push([nr, nc]);
-                    }
-                }
-            }
-            
-            // Check if the found cluster is large enough to blast
-            if (currentCluster.length >= 3) {
-                currentCluster.forEach(([cr, cc]) => finalTilesToClear.add(`${cr},${cc}`));
-            }
+          if (
+            nr >= 0 &&
+            nr < rows &&
+            nc >= 0 &&
+            nc < cols &&
+            !visited[nr][nc] &&
+            grid[nr][nc] === color
+          ) {
+            visited[nr][nc] = true;
+            queue.push([nr, nc]);
+          }
         }
+      }
+
+      if (currentCluster.length >= 3) {
+        currentCluster.forEach(([cr, cc]) =>
+          finalTilesToClear.add(`${cr},${cc}`)
+        );
+      }
     }
-    
-    // Convert Set<string> back to [number, number][] array
-    return Array.from(finalTilesToClear).map(coordStr => {
-        const [r, c] = coordStr.split(',').map(Number);
-        return [r, c] as [number, number];
-    });
+  }
+
+  return Array.from(finalTilesToClear).map((coordStr) => {
+    const [r, c] = coordStr.split(",").map(Number);
+    return [r, c] as [number, number];
+  });
 };
 
+const clearMatches = (
+  grid: Grid,
+  coordsToClear: [number, number][]
+): { newGrid: Grid; scoreDelta: number } => {
+  let scoreDelta = 0;
+  const newGrid = grid.map((row) => [...row]);
 
-/**
- * Applies the clears to the grid and returns the new grid and score.
- */
-const clearMatches = (grid: Grid, coordsToClear: [number, number][]): { newGrid: Grid, scoreDelta: number } => {
-    let scoreDelta = 0;
-    const newGrid = grid.map(row => [...row]); // Deep copy
+  coordsToClear.forEach(([r, c]) => {
+    if (newGrid[r][c]) {
+      newGrid[r][c] = null;
+      scoreDelta += 1;
+    }
+  });
 
-    coordsToClear.forEach(([r, c]) => {
-        if (newGrid[r][c]) {
-            newGrid[r][c] = null;
-            // SCORE UPDATE: 1 point per cleared block
-            scoreDelta += 1; 
-        }
-    });
-
-    return { newGrid, scoreDelta };
+  return { newGrid, scoreDelta };
 };
-
 
 // --- COMPONENT: Tile Display ---
 
-/**
- * Renders the preview of a single draggable tile.
- */
 const TilePreview: React.FC<{
-    tile: Tile;
-    scale?: number;
-    draggable: boolean;
-    onDragStart: (e: React.DragEvent<HTMLDivElement>, tile: Tile) => void;
+  tile: Tile;
+  scale?: number;
+  draggable: boolean;
+  onDragStart: (
+    e: React.DragEvent<HTMLDivElement>,
+    tile: Tile,
+    scale: number
+  ) => void;
 }> = ({ tile, scale = 1, draggable, onDragStart }) => {
-    // Calculate bounding box for the piece
-    const minR = Math.min(...tile.shape.map(s => s[0]));
-    const minC = Math.min(...tile.shape.map(s => s[1]));
-    const tileW = Math.max(...tile.shape.map(s => s[1])) - minC + 1;
-    const tileH = Math.max(...tile.shape.map(s => s[0])) - minR + 1;
+  const minR = Math.min(...tile.shape.map((s) => s[0]));
+  const minC = Math.min(...tile.shape.map((s) => s[1]));
+  const tileW =
+    Math.max(...tile.shape.map((s) => s[1])) - minC + 1;
+  const tileH =
+    Math.max(...tile.shape.map((s) => s[0])) - minR + 1;
 
-    // Determine preview style based on used state
-    const opacity = tile.used ? 0.3 : 1;
-    const cursor = tile.used ? 'cursor-default' : 'cursor-grab';
-    
-    // Drag properties applied to the inner grid div for cleaner drag image
-    const dragProps = draggable && !tile.used ? { 
-        draggable: true, 
-        onDragStart: (e: React.DragEvent<HTMLDivElement>) => onDragStart(e, tile) 
-    } : {};
+  const opacity = tile.used ? 0.2 : 1;
+  const cursor = tile.used
+    ? "cursor-default"
+    : "cursor-grab active:cursor-grabbing";
 
-    return (
-        <div
-            className={`transition-opacity duration-300 ${cursor}`}
-            style={{ 
-                opacity, 
-                // Set width/height of the outer container to exactly fit the blocks,
-                width: `${tileW * TILE_SIZE * scale}px`, 
-                height: `${tileH * TILE_SIZE * scale}px`,
-                padding: '0px'
-            }}
-        >
-            <div 
-                className="grid"
-                style={{
-                    gridTemplateColumns: `repeat(${tileW}, ${TILE_SIZE * scale}px)`,
-                    gridTemplateRows: `repeat(${tileH}, ${TILE_SIZE * scale}px)`,
-                }}
-                {...dragProps} 
-            >
-                {tile.shape.map(([r, c], index) => {
-                    const colorKey = tile.colorMap.get(`${r},${c}`) || tile.color; 
-                    
-                    return (
-                        <div
-                            key={index}
-                            className="rounded-md shadow-md border-2 border-white transition-transform duration-100"
-                            style={{
-                                gridArea: `${r - minR + 1} / ${c - minC + 1} / span 1 / span 1`, 
-                                backgroundColor: GAME_COLORS[colorKey],
-                                width: `${TILE_SIZE * scale}px`,
-                                height: `${TILE_SIZE * scale}px`,
-                                transform: 'scale(0.95)'
-                            }}
-                        />
-                    );
-                })}
-            </div>
-        </div>
-    );
+  const containerWidth =
+    tileW * TILE_SIZE * scale + (tileW - 1) * GAP_SIZE * scale;
+  const containerHeight =
+    tileH * TILE_SIZE * scale + (tileH - 1) * GAP_SIZE * scale;
+
+  return (
+    <div
+      className={`transition-all duration-200 ${cursor} select-none bg-transparent`}
+      draggable={draggable && !tile.used}
+      onDragStart={(e) => onDragStart(e, tile, scale)}
+      style={{
+        opacity,
+        width: `${containerWidth}px`,
+        height: `${containerHeight}px`,
+      }}
+    >
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: `repeat(${tileW}, ${
+            TILE_SIZE * scale
+          }px)`,
+          gridTemplateRows: `repeat(${tileH}, ${
+            TILE_SIZE * scale
+          }px)`,
+          gap: `${GAP_SIZE * scale}px`,
+          pointerEvents: "none",
+        }}
+      >
+        {tile.shape.map(([r, c], index) => {
+          const colorKey =
+            tile.colorMap.get(`${r},${c}`) || tile.color;
+
+          return (
+            <div
+              key={index}
+              className="rounded-md shadow-sm border border-black/10"
+              style={{
+                gridArea: `${r - minR + 1} / ${
+                  c - minC + 1
+                } / span 1 / span 1`,
+                backgroundColor: GAME_COLORS[colorKey],
+                width: "100%",
+                height: "100%",
+              }}
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
 };
-
 
 // --- COMPONENT: Main Game Grid ---
 
 const MainGrid: React.FC<{
-    grid: Grid;
-    onDrop: (e: React.DragEvent<HTMLDivElement>, r: number, c: number) => void;
-    onDragOver: (e: React.DragEvent<HTMLDivElement>, r: number, c: number) => void;
-    highlightCells: [number, number][]; // Cells to highlight during drag
-    placementIsValid: boolean | null; // NEW: Validity state for drag highlight
-    matchCells: [number, number][]; // Cells to highlight for clearing
-}> = ({ grid, onDrop, onDragOver, highlightCells, placementIsValid, matchCells }) => {
-    
-    // Convert highlight and match cells to Set<string> for fast lookup
-    const highlightSet = useMemo(() => new Set(highlightCells.map(([r, c]) => `${r},${c}`)), [highlightCells]);
-    const matchSet = useMemo(() => new Set(matchCells.map(([r, c]) => `${r},${c}`)), [matchCells]);
+  grid: Grid;
+  onDrop: (
+    e: React.DragEvent<HTMLDivElement>,
+    r: number,
+    c: number
+  ) => void;
+  onDragOver: (
+    e: React.DragEvent<HTMLDivElement>,
+    r: number,
+    c: number
+  ) => void;
+  highlightCells: [number, number][];
+  matchCells: [number, number][];
+}> = ({
+  grid,
+  onDrop,
+  onDragOver,
+  highlightCells,
+  matchCells,
+}) => {
+  const highlightSet = useMemo(
+    () => new Set(highlightCells.map(([r, c]) => `${r},${c}`)),
+    [highlightCells]
+  );
+  const matchSet = useMemo(
+    () => new Set(matchCells.map(([r, c]) => `${r},${c}`)),
+    [matchCells]
+  );
 
-    // Determine the border color for placement highlight
-    const highlightRingColor = placementIsValid === true
-        ? 'ring-green-500' // Valid placement: GREEN
-        : placementIsValid === false
-        ? 'ring-red-500'   // Invalid placement: RED
-        : 'ring-blue-500'; // Default/unused state
+  const placementIsValid = highlightCells.length > 0;
 
-    const highlightBgColor = placementIsValid === true 
-        ? 'bg-green-100/70' 
-        : 'bg-red-100/70';
+  const highlightRingColor = "ring-green-500 z-10";
+  const highlightBgColor = "bg-green-100/80";
 
-    return (
-        <div className="shadow-2xl rounded-xl border-4 border-gray-700/50 p-1 bg-gray-900/10">
-            <div
-                className="grid mx-auto"
-                style={{
-                    gridTemplateColumns: `repeat(${GRID_SIZE}, ${TILE_SIZE}px)`,
-                    gridTemplateRows: `repeat(${GRID_SIZE}, ${TILE_SIZE}px)`,
-                    width: `${GRID_SIZE * TILE_SIZE}px`,
-                    height: `${GRID_SIZE * TILE_SIZE}px`,
-                }}
-            >
-                {grid.map((row, r) =>
-                    row.map((colorKey, c) => {
-                        const cellId = `${r},${c}`;
-                        const isHighlighted = highlightSet.has(cellId);
-                        const isMatch = matchSet.has(cellId);
+  const totalSize =
+    GRID_SIZE * TILE_SIZE + (GRID_SIZE - 1) * GAP_SIZE;
 
-                        let backgroundColor = colorKey ? GAME_COLORS[colorKey as ColorKey] : '#E0E0E0';
-                        
-                        let className = "relative transition-all duration-200 border border-gray-300/50 rounded-sm";
-                        let transformStyle = '';
-
-                        if (isHighlighted) {
-                            // Apply dynamic style for drag-over placement preview
-                            className += ` ring-2 ring-offset-1 ${highlightRingColor} ${highlightBgColor} opacity-80`;
-                        }
-                        
-                        if (isMatch) {
-                            // Style for clearing match (pulsing effect)
-                            className += ' animate-pulse';
-                            // Override background color for intense visual effect
-                            backgroundColor = 'rgba(255, 69, 0, 0.9)'; // OrangeRed blast
-                            transformStyle = 'scale(1.05)';
-                        }
-                        
-                        // Style for empty slots
-                        if (!colorKey && !isHighlighted && !isMatch) {
-                            backgroundColor = 'rgba(240, 240, 240, 0.9)'; // Light, visible empty slot
-                            className += ' hover:bg-gray-200';
-                        }
-
-
-                        return (
-                            <div
-                                key={`${r}-${c}`}
-                                className={className}
-                                style={{
-                                    backgroundColor,
-                                    transform: transformStyle,
-                                }}
-                                onDragOver={(e) => onDragOver(e, r, c)}
-                                onDrop={(e) => onDrop(e, r, c)}
-                            />
-                        );
-                    })
-                )}
-            </div>
-        </div>
-    );
-};
-
-
-// --- NEW COMPONENT: Hidden Drag Image (to suppress default preview box) ---
-const HiddenDragImage = React.forwardRef<HTMLDivElement, {}>(({}, ref) => (
-    <div
-        ref={ref}
+  return (
+    <div className="shadow-2xl rounded-xl border-4 border-gray-700/50 p-2 bg-gray-900/10 inline-block">
+      <div
+        className="mx-auto"
         style={{
-            position: 'fixed',
-            top: -100, // Move it off-screen
-            left: -100,
-            width: 1, // Make it very small
-            height: 1,
-            backgroundColor: 'transparent',
+          display: "grid",
+          gridTemplateColumns: `repeat(${GRID_SIZE}, ${TILE_SIZE}px)`,
+          gridTemplateRows: `repeat(${GRID_SIZE}, ${TILE_SIZE}px)`,
+          gap: `${GAP_SIZE}px`,
+          width: `${totalSize}px`,
+          height: `${totalSize}px`,
         }}
-    />
-));
-HiddenDragImage.displayName = 'HiddenDragImage';
+      >
+        {grid.map((row, r) =>
+          row.map((colorKey, c) => {
+            const cellId = `${r},${c}`;
+            const isHighlighted = highlightSet.has(cellId);
+            const isMatch = matchSet.has(cellId);
 
+            let backgroundColor = colorKey
+              ? GAME_COLORS[colorKey as ColorKey]
+              : "rgba(255, 255, 255, 0.6)";
+
+            let className =
+              "relative transition-all duration-150 rounded-sm";
+            let transformStyle = "";
+
+            if (isHighlighted && placementIsValid) {
+              className += ` ring-4 ring-inset ${highlightRingColor} ${highlightBgColor} opacity-100`;
+              transformStyle = "scale(1.1)";
+            }
+
+            if (isMatch) {
+              className += " animate-pulse z-20 opacity-80";
+              if (colorKey) {
+                backgroundColor =
+                  GAME_COLORS[colorKey as ColorKey];
+              }
+              transformStyle = "scale(1.2)";
+            }
+
+            if (!colorKey && !isHighlighted && !isMatch) {
+              className += " hover:bg-white/80";
+            }
+
+            if (colorKey && !isHighlighted && !isMatch) {
+              className +=
+                " shadow-sm border border-black/5";
+            }
+
+            return (
+              <div
+                key={`${r}-${c}`}
+                className={className}
+                style={{
+                  backgroundColor,
+                  transform: transformStyle,
+                }}
+                onDragOver={(e) => onDragOver(e, r, c)}
+                onDrop={(e) => onDrop(e, r, c)}
+              />
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+};
 
 // --- MAIN APP COMPONENT ---
 
 const App: React.FC = () => {
-    // Game State
-    // FIX (TypeScript): Correctly type the initialization of the 2D array
-    const initialGrid: Grid = Array(GRID_SIZE).fill(0).map(() => 
-        Array(GRID_SIZE).fill(null) as (ColorKey | null)[]
+  const initialGrid: Grid = Array(GRID_SIZE)
+    .fill(0)
+    .map(
+      () =>
+        Array(GRID_SIZE).fill(
+          null
+        ) as (ColorKey | null)[]
     );
+
+  const [grid, setGrid] = useState<Grid>(initialGrid);
+  const [score, setScore] = useState(0);
+  const [highScore, setHighScore] = useState(0);
+  const [tileSet, setTileSet] = useState<TileSet>([]);
+  const [isGameOver, setIsGameOver] = useState(false);
+  const [tileIdCounter, setTileIdCounter] =
+    useState(NUM_PATTERNS);
+
+  // Drag State
+  const [draggedTile, setDraggedTile] =
+    useState<Tile | null>(null);
+  // anchor within the tile.shape coordinates that you grabbed (ar, ac)
+  const [dragAnchor, setDragAnchor] = useState<
+    [number, number] | null
+  >(null);
+  const [highlightCells, setHighlightCells] = useState<
+    [number, number][]
+  >([]);
+
+  // Match State
+  const [matchCells, setMatchCells] = useState<
+    [number, number][]
+  >([]);
+
+  // Removed: LLM State (hintText, isHintLoading)
+
+  useEffect(() => {
+    setTileSet(generateRandomTileSet(0));
+    const savedHighScore =
+      localStorage.getItem("hexaMatchHighScore");
+    if (savedHighScore) {
+      setHighScore(parseInt(savedHighScore));
+    }
+  }, []);
+
+  const resetGame = useCallback(() => {
+    setGrid(
+      Array(GRID_SIZE)
+        .fill(0)
+        .map(
+          () =>
+            Array(GRID_SIZE).fill(
+              null
+            ) as (ColorKey | null)[]
+        )
+    );
+    setScore(0);
+    setTileSet(generateRandomTileSet(0));
+    setTileIdCounter(NUM_PATTERNS);
+    setIsGameOver(false);
+    setMatchCells([]);
+    setHighlightCells([]);
+    // Removed: setHintText call
+  }, []);
+
+  // --- DRAG LOGIC ---
+
+  const handleDragStart = (
+    e: React.DragEvent<HTMLDivElement>,
+    tile: Tile,
+    scale: number
+  ) => {
+    setDraggedTile(tile);
+
+    const target = e.currentTarget as HTMLElement;
+    const rect = target.getBoundingClientRect();
+
+    // Mouse position inside the preview container
+    const localX = e.clientX - rect.left;
+    const localY = e.clientY - rect.top;
+
+    // Tile bounding box in shape coordinates
+    const minR = Math.min(...tile.shape.map((s) => s[0]));
+    const minC = Math.min(...tile.shape.map((s) => s[1]));
+    const tileW =
+      Math.max(...tile.shape.map((s) => s[1])) - minC + 1;
+    const tileH =
+      Math.max(...tile.shape.map((s) => s[0])) - minR + 1;
+
+    // IMPORTANT: Use TILE_SIZE for calculation, NOT scaled size.
+    const baseCellSize = TILE_SIZE;
+    const baseGap = GAP_SIZE;
+    const baseStride = baseCellSize + baseGap;
     
-    const [grid, setGrid] = useState<Grid>(initialGrid);
-    const [score, setScore] = useState(0);
-    const [highScore, setHighScore] = useState(0);
-    
-    // FIX (Hydration): Initialize tileSet as an empty array.
-    const [tileSet, setTileSet] = useState<TileSet>([]); 
-    
-    const [isGameOver, setIsGameOver] = useState(false);
-    const [tileIdCounter, setTileIdCounter] = useState(NUM_PATTERNS);
+    // Reverse scale the local coordinates
+    const unscaledLocalX = localX / scale;
+    const unscaledLocalY = localY / scale;
 
-    // Drag State
-    const [draggedTile, setDraggedTile] = useState<Tile | null>(null);
-    const [highlightCells, setHighlightCells] = useState<[number, number][]>([]);
-    const [placementIsValid, setPlacementIsValid] = useState<boolean | null>(null);
-    
-    // FIX (Drag Image): Ref for the off-screen element used to suppress the default drag box.
-    const dragImageRef = React.useRef<HTMLDivElement>(null);
+    // Which visual cell did we grab (row/col index in the preview grid)?
+    let col = Math.floor(unscaledLocalX / baseStride);
+    let row = Math.floor(unscaledLocalY / baseStride);
 
-    // Match State (for visual feedback)
-    const [matchCells, setMatchCells] = useState<[number, number][]>([]);
+    // Safety checks for boundary
+    if (col < 0) col = 0;
+    if (row < 0) row = 0;
+    if (col >= tileW) col = tileW - 1;
+    if (row >= tileH) row = tileH - 1;
 
-    // --- GAME START/RESET & HYDRATION FIX ---
+    // Map that preview cell back to a specific shape coordinate (ar, ac)
+    let anchorR = tile.shape[0][0];
+    let anchorC = tile.shape[0][1];
 
-    // FIX (Hydration): Move tile and score initialization to run only on the client.
-    useEffect(() => {
-        // Initialize tiles on mount
-        setTileSet(generateRandomTileSet(0));
-
-        // Load high score
-        const savedHighScore = localStorage.getItem('hexaMatchHighScore');
-        if (savedHighScore) {
-            setHighScore(parseInt(savedHighScore));
-        }
-    }, []);
-
-    const resetGame = useCallback(() => {
-        setGrid(Array(GRID_SIZE).fill(0).map(() => 
-            Array(GRID_SIZE).fill(null) as (ColorKey | null)[]
-        ));
-        setScore(0);
-        // Generate new tiles immediately upon client-side reset
-        setTileSet(generateRandomTileSet(0)); 
-        setTileIdCounter(NUM_PATTERNS);
-        setIsGameOver(false);
-        setMatchCells([]);
-        setHighlightCells([]);
-        setPlacementIsValid(null);
-    }, []);
-
-    // --- DRAG LOGIC ---
-
-    const handleDragStart = (e: React.DragEvent<HTMLDivElement>, tile: Tile) => {
-        setDraggedTile(tile);
-        setPlacementIsValid(null);
-        e.dataTransfer.setData("text/plain", tile.id.toString());
-        
-        // FIX (Drag Image): Use the hidden off-screen element as the drag image 
-        // to prevent the default white box from appearing.
-        if (dragImageRef.current) {
-            e.dataTransfer.setDragImage(dragImageRef.current, 0, 0);
-        }
-        
-        e.dataTransfer.dropEffect = 'move';
-    };
-    
-    /**
-     * Checks if a tile can be placed at the given root (r, c)
-     */
-    const isValidPlacement = useCallback((tile: Tile, rootR: number, rootC: number): boolean => {
-        if (!tile || tile.used) return false;
-
-        for (const [dr, dc] of tile.shape) {
-            const r = rootR + dr;
-            const c = rootC + dc;
-
-            // Check boundaries
-            if (r < 0 || r >= GRID_SIZE || c < 0 || c >= GRID_SIZE) {
-                return false;
-            }
-            // Check if cell is already occupied
-            if (grid[r][c] !== null) {
-                return false;
-            }
-        }
-        return true;
-    }, [grid]);
-
-    const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>, r: number, c: number) => {
-        e.preventDefault();
-        if (!draggedTile) return;
-
-        // 1. Check placement validity
-        const placementIsValid = isValidPlacement(draggedTile, r, c);
-        setPlacementIsValid(placementIsValid);
-
-        // 2. Determine highlighting cells
-        const newHighlightCells: [number, number][] = [];
-        if (placementIsValid) {
-            for (const [dr, dc] of draggedTile.shape) {
-                newHighlightCells.push([r + dr, c + dc]);
-            }
-        }
-        
-        // Update highlight state only if it changed to avoid excessive re-renders
-        if (JSON.stringify(newHighlightCells) !== JSON.stringify(highlightCells)) {
-            setHighlightCells(newHighlightCells);
-        }
-
-        // 3. Use the validity check to set the drag cursor style
-        e.dataTransfer.dropEffect = placementIsValid ? 'move' : 'none';
-    }, [draggedTile, highlightCells, isValidPlacement]);
-    
-    const handleDragEnd = () => {
-        setDraggedTile(null); // Critical: Ensure drag state is cleared
-        setHighlightCells([]);
-        setPlacementIsValid(null); // Clear validity state
+    for (const [r, c] of tile.shape) {
+      const nr = r - minR;
+      const nc = c - minC;
+      if (nr === row && nc === col) {
+        anchorR = r;
+        anchorC = c;
+        break;
+      }
     }
 
-    // --- GAMEPLAY LOGIC ---
-    
-    const applyPlacement = useCallback(async (tile: Tile, rootR: number, rootC: number) => {
-        let newGrid = grid.map(row => [...row]); // Deep copy of the grid
-        let scoreDelta = 0; 
+    setDragAnchor([anchorR, anchorC]);
 
-        // 1. Place the tiles
-        for (const [dr, dc] of tile.shape) {
-            const r = rootR + dr;
-            const c = rootC + dc;
-            // Place the color based on the individual block's color in the map
-            const colorKey = tile.colorMap.get(`${dr},${dc}`) || tile.color; 
-            newGrid[r][c] = colorKey;
-        }
+    // Standard drag data + ghost
+    e.dataTransfer.setData("text/plain", tile.id.toString());
+    e.dataTransfer.effectAllowed = "move";
 
-        // 2. Mark the tile as used
-        const newTileSet = tileSet.map(t => 
-            t.id === tile.id ? { ...t, used: true } : t
-        );
-        
-        setTileSet(newTileSet);
-        
-        // 3. Recursive Match/Clear loop
-        let currentGrid = newGrid;
-        let totalScoreDelta = scoreDelta;
+    const dragGhost = target.cloneNode(true) as HTMLElement;
+    dragGhost.style.position = "absolute";
+    dragGhost.style.top = "-1000px";
+    dragGhost.style.left = "-1000px";
+    dragGhost.style.opacity = "1";
+    dragGhost.style.backgroundColor = "transparent";
+    dragGhost.style.transform = "scale(0.909)";
+    dragGhost.style.transformOrigin = "top left";
+    dragGhost.style.pointerEvents = "none";
 
-        const loop = (currentGrid: Grid): Grid => {
-            // NOTE: Using the new findGroupMatches logic
-            const matches = findGroupMatches(currentGrid);
-            if (matches.length === 0) {
-                return currentGrid;
-            }
+    document.body.appendChild(dragGhost);
 
-            // Temporarily highlight matches for visual feedback
-            setMatchCells(matches);
-            
-            // Clear matches and update score
-            const { newGrid: clearedGrid, scoreDelta: clearScore } = clearMatches(currentGrid, matches);
-            // Accumulate score based ONLY on the number of eliminated blocks
-            totalScoreDelta += clearScore; 
-            
-            // Set matchCells to empty *after* clearing to ensure visual reset for cascading match
-            setTimeout(() => setMatchCells([]), 300); 
-
-            // Re-check for new matches created by the clearance (cascading effect)
-            return loop(clearedGrid); 
-        };
-        
-        const finalGrid = loop(newGrid);
-        
-        setGrid(finalGrid);
-        
-        // 4. Update Score
-        const newScore = score + totalScoreDelta;
-        setScore(newScore);
-        if (newScore > highScore) {
-            setHighScore(newScore);
-            localStorage.setItem('hexaMatchHighScore', newScore.toString());
-        }
-
-        // 5. Check for new tile generation and Game Over
-        const allUsed = newTileSet.every(t => t.used);
-        if (allUsed) {
-            // Generate next set
-            const nextTileSet = generateRandomTileSet(tileIdCounter);
-            setTileSet(nextTileSet);
-            setTileIdCounter(prev => prev + NUM_PATTERNS);
-            
-            // Check for Game Over after new tiles are generated
-            checkGameOver(finalGrid, nextTileSet);
-        } else {
-            // Check for Game Over only if the player is stuck with the remaining tiles
-            checkGameOver(finalGrid, newTileSet);
-        }
-        
-    }, [grid, score, highScore, tileSet, tileIdCounter]);
-
-
-    const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>, r: number, c: number) => {
-        e.preventDefault();
-        const droppedTile = draggedTile; 
-        setDraggedTile(null); 
-        setHighlightCells([]); 
-        setPlacementIsValid(null); 
-
-        if (droppedTile && isValidPlacement(droppedTile, r, c)) {
-            applyPlacement(droppedTile, r, c);
-        }
-    }, [draggedTile, isValidPlacement, applyPlacement]);
-
-    
-    /**
-     * Checks if any remaining unused tile can be placed anywhere on the grid.
-     */
-    const checkGameOver = useCallback((currentGrid: Grid, currentTileSet: TileSet) => {
-        // Filter out used tiles
-        let remainingTiles = currentTileSet.filter(t => !t.used);
-        
-        // If no tiles are left but the tileSet size matches NUM_PATTERNS, it means a new set
-        // was just generated and we should check those new tiles.
-        if (remainingTiles.length === 0 && currentTileSet.length === NUM_PATTERNS && currentTileSet.some(t => !t.used)) {
-             remainingTiles = currentTileSet;
-        }
-        
-        if (remainingTiles.length === 0) return; 
-
-        let canPlaceAnyTile = false;
-
-        for (const tile of remainingTiles) {
-            for (let r = 0; r < GRID_SIZE; r++) {
-                for (let c = 0; c < GRID_SIZE; c++) {
-                    // Check if this specific tile can be placed at (r, c)
-                    const canPlace = (
-                        !tile.used && // Must be an unused tile
-                        r >= 0 && r < GRID_SIZE && 
-                        c >= 0 && c < GRID_SIZE &&
-                        tile.shape.every(([dr, dc]) => {
-                            const tr = r + dr;
-                            const tc = c + dc;
-                            return (
-                                tr >= 0 && tr < GRID_SIZE && 
-                                tc >= 0 && tc < GRID_SIZE && 
-                                currentGrid[tr][tc] === null
-                            );
-                        })
-                    );
-                    
-                    if (canPlace) {
-                        canPlaceAnyTile = true;
-                        break;
-                    }
-                }
-                if (canPlaceAnyTile) break;
-            }
-            if (canPlaceAnyTile) break;
-        }
-
-        if (!canPlaceAnyTile) {
-            setIsGameOver(true);
-        }
-    }, []);
-
-
-    // Effect to check for game over whenever tileset or grid changes
-    useEffect(() => {
-        if (!isGameOver && tileSet.length > 0) {
-            checkGameOver(grid, tileSet);
-        }
-    }, [tileSet, grid, isGameOver, checkGameOver]);
-    
-
-    // --- RENDER ---
-
-    return (
-        <div className="min-h-screen p-6 font-sans flex flex-col items-center">
-            
-            {/* Hidden component used to suppress the default drag image */}
-            <HiddenDragImage ref={dragImageRef} />
-
-            {/* Header and Scoreboard */}
-            <div className="w-full max-w-4xl flex justify-between items-center mb-8 p-4 bg-white rounded-xl shadow-2xl border-b-4 border-indigo-400">
-                <h1 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 tracking-wide">
-                    Color Cascade
-                </h1>
-                
-                <div className="flex items-center space-x-6 text-center">
-                    {/* Home Button */}
-                    <a 
-                        href="/games" 
-                        className="p-3 rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors shadow-md hover:shadow-lg"
-                        aria-label="Go to Home"
-                    >
-                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
-                        </svg>
-                    </a>
-
-                    <div>
-                        <p className="text-sm font-medium text-gray-500">SCORE</p>
-                        <p className="text-3xl font-bold text-green-600">{score}</p>
-                    </div>
-                    <div>
-                        <p className="text-sm font-medium text-gray-500">HIGH SCORE</p>
-                        <p className="text-3xl font-bold text-red-600">{highScore}</p>
-                    </div>
-                </div>
-            </div>
-
-            <div className="flex flex-col lg:flex-row w-full max-w-6xl space-y-8 lg:space-y-0 lg:space-x-8 justify-center">
-                
-                {/* Main Game Grid */}
-                <div className="flex-shrink-0">
-                    <MainGrid
-                        grid={grid}
-                        onDrop={handleDrop}
-                        onDragOver={handleDragOver}
-                        highlightCells={highlightCells}
-                        matchCells={matchCells}
-                        placementIsValid={placementIsValid}
-                    />
-                </div>
-                
-                {/* Tile Palette / Controls */}
-                <div className="w-full lg:w-80 flex flex-col space-y-6"> 
-                    <div className="p-6 bg-white rounded-xl shadow-xl border-2 border-gray-200 w-full">
-                        <p className="text-lg font-semibold text-gray-700 mb-3 text-center border-b pb-2">Drag & Drop</p>
-                        <div 
-                            className="flex flex-col items-center justify-around space-y-8" 
-                            onDragEnd={handleDragEnd}
-                        >
-                            {/* Conditional rendering to prevent rendering tiles before client hydration */}
-                            {tileSet.length === 0 ? (
-                                <div className="py-12 text-gray-500">Generating initial tiles...</div>
-                            ) : (
-                                tileSet.map((tile) => (
-                                    <TilePreview
-                                        key={tile.id}
-                                        tile={tile}
-                                        draggable={true}
-                                        onDragStart={handleDragStart}
-                                        scale={1.3}
-                                    />
-                                ))
-                            )}
-                        </div>
-                    </div>
-                    
-                    {/* Reset Button */}
-                    <button
-                        onClick={resetGame}
-                        className="w-full py-3 text-lg font-semibold rounded-xl bg-indigo-500 text-white shadow-lg transition-all transform hover:scale-[1.03] active:scale-[0.98] hover:bg-indigo-600 shadow-indigo-500/50"
-                    >
-                        New Game
-                    </button>
-                </div>
-            </div>
-            
-            {/* Game Over Modal - Enhanced for clarity and restart */}
-            {isGameOver && (
-                <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-                    <div className="bg-white rounded-2xl shadow-3xl p-10 w-full max-w-md text-center border-8 border-red-500 transform scale-105 animate-pulse-once">
-                        <h2 className="text-5xl font-extrabold text-red-600 mb-2 tracking-wider">GAME OVER!</h2>
-                        <svg className="w-16 h-16 mx-auto my-4 text-red-500" fill="currentColor" viewBox="0 0 24 24">
-                             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
-                        </svg>
-                        <p className="text-2xl text-gray-800 mb-6 font-semibold">
-                            Final Score: <span className="font-extrabold text-red-600">{score}</span>
-                        </p>
-                        <p className="text-lg text-gray-600 mb-8">
-                            High Score: {highScore}
-                        </p>
-                        <button
-                            onClick={resetGame}
-                            className="w-full py-4 text-xl font-bold rounded-xl bg-green-500 text-white shadow-2xl transition-all hover:bg-green-600 transform hover:scale-[1.02]"
-                        >
-                            <svg className="w-6 h-6 inline-block mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h5M20 20v-5h-5m-1.5-9h-10A1.5 1.5 0 005 6.5v11A1.5 1.5 0 006.5 19h11a1.5 1.5 0 001.5-1.5v-10A1.5 1.5 0 0017.5 4h-10" />
-                            </svg>
-                            Restart Game
-                        </button>
-                        <a 
-                            href="/" 
-                            className="block mt-4 text-indigo-600 hover:text-indigo-800 font-medium transition-colors"
-                        >
-                            Go to Home (/)
-                        </a>
-                    </div>
-                </div>
-            )}
-        </div>
+    // This offset for the drag image is still necessary:
+    e.dataTransfer.setDragImage(
+      dragGhost,
+      localX * 0.909,
+      localY * 0.909
     );
+
+    setTimeout(() => {
+      if (document.body.contains(dragGhost)) {
+        document.body.removeChild(dragGhost);
+      }
+    }, 0);
+  };
+
+  const isValidPlacement = useCallback(
+    (tile: Tile, rootR: number, rootC: number): boolean => {
+      if (!tile || tile.used) return false;
+
+      for (const [dr, dc] of tile.shape) {
+        const r = rootR + dr;
+        const c = rootC + dc;
+
+        if (
+          r < 0 ||
+          r >= GRID_SIZE ||
+          c < 0 ||
+          c >= GRID_SIZE
+        ) {
+          return false;
+        }
+        if (grid[r][c] !== null) {
+          return false;
+        }
+      }
+      return true;
+    },
+    [grid]
+  );
+
+  const handleDragOver = useCallback(
+    (
+      e: React.DragEvent<HTMLDivElement>,
+      r: number,
+      c: number
+    ) => {
+      e.preventDefault();
+      if (!draggedTile) return;
+      if (!dragAnchor) {
+        // Fallback or initialization error
+        e.dataTransfer.dropEffect = "none";
+        return;
+      }
+
+      const [anchorR, anchorC] = dragAnchor;
+
+      // Calculate the root cell (top-left of the piece) so that the 
+      // block at anchorR, anchorC lands precisely on the hovered cell (r, c).
+      const rootR = r - anchorR;
+      const rootC = c - anchorC;
+
+      const placementIsValid = isValidPlacement(
+        draggedTile,
+        rootR,
+        rootC
+      );
+
+      const newHighlightCells: [number, number][] = [];
+      if (placementIsValid) {
+        for (const [dr, dc] of draggedTile.shape) {
+          newHighlightCells.push([
+            rootR + dr,
+            rootC + dc,
+          ]);
+        }
+      }
+
+      if (
+        JSON.stringify(newHighlightCells) !==
+        JSON.stringify(highlightCells)
+      ) {
+        setHighlightCells(newHighlightCells);
+      }
+
+      e.dataTransfer.dropEffect = placementIsValid
+        ? "move"
+        : "none";
+    },
+    [draggedTile, dragAnchor, highlightCells, isValidPlacement]
+  );
+
+  const handleDragEnd = () => {
+    setDraggedTile(null);
+    setDragAnchor(null);
+    setHighlightCells([]);
+  };
+
+  // --- GAMEPLAY LOGIC ---
+
+  const applyPlacement = useCallback(
+    async (tile: Tile, rootR: number, rootC: number) => {
+      let newGrid = grid.map((row) => [...row]);
+      let scoreDelta = 0;
+
+      for (const [dr, dc] of tile.shape) {
+        const r = rootR + dr;
+        const c = rootC + dc;
+        const colorKey =
+          tile.colorMap.get(`${dr},${dc}`) || tile.color;
+        newGrid[r][c] = colorKey;
+      }
+
+      const newTileSet = tileSet.map((t) =>
+        t.id === tile.id ? { ...t, used: true } : t
+      );
+
+      setTileSet(newTileSet);
+
+      let currentGrid = newGrid;
+      let totalScoreDelta = scoreDelta;
+
+      const loop = (currentGrid: Grid): Grid => {
+        const matches = findGroupMatches(currentGrid);
+        if (matches.length === 0) {
+          return currentGrid;
+        }
+
+        setMatchCells(matches);
+
+        const {
+          newGrid: clearedGrid,
+          scoreDelta: clearScore,
+        } = clearMatches(currentGrid, matches);
+        totalScoreDelta += clearScore;
+
+        setTimeout(
+          () => setMatchCells([]),
+          300
+        );
+        return loop(clearedGrid);
+      };
+
+      const finalGrid = loop(newGrid);
+
+      setGrid(finalGrid);
+
+      const newScore = score + totalScoreDelta;
+      setScore(newScore);
+      if (newScore > highScore) {
+        setHighScore(newScore);
+        localStorage.setItem(
+          "hexaMatchHighScore",
+          newScore.toString()
+        );
+      }
+
+      const allUsed = newTileSet.every((t) => t.used);
+      if (allUsed) {
+        const nextTileSet =
+          generateRandomTileSet(tileIdCounter);
+        setTileSet(nextTileSet);
+        setTileIdCounter(
+          (prev) => prev + NUM_PATTERNS
+        );
+        checkGameOver(finalGrid, nextTileSet);
+      } else {
+        checkGameOver(finalGrid, newTileSet);
+      }
+    },
+    [
+      grid,
+      score,
+      highScore,
+      tileSet,
+      tileIdCounter,
+    ]
+  );
+
+  const handleDrop = useCallback(
+    (
+      e: React.DragEvent<HTMLDivElement>,
+      r: number,
+      c: number
+    ) => {
+      e.preventDefault();
+      const droppedTile = draggedTile;
+      
+      // Must check dragAnchor here, or logic below will fail.
+      if (!dragAnchor || !droppedTile) return;
+      
+      const [anchorR, anchorC] = dragAnchor;
+
+      setDraggedTile(null);
+      setDragAnchor(null);
+      setHighlightCells([]);
+
+      const rootR = r - anchorR;
+      const rootC = c - anchorC;
+
+      if (
+        isValidPlacement(
+          droppedTile,
+          rootR,
+          rootC
+        )
+      ) {
+        applyPlacement(
+          droppedTile,
+          rootR,
+          rootC
+        );
+      }
+    },
+    [draggedTile, dragAnchor, isValidPlacement, applyPlacement]
+  );
+
+  const checkGameOver = useCallback(
+    (currentGrid: Grid, currentTileSet: TileSet) => {
+      let remainingTiles =
+        currentTileSet.filter((t) => !t.used);
+
+      if (
+        remainingTiles.length === 0 &&
+        currentTileSet.length === NUM_PATTERNS &&
+        currentTileSet.some((t) => !t.used)
+      ) {
+        remainingTiles = currentTileSet;
+      }
+
+      if (remainingTiles.length === 0) return;
+
+      let canPlaceAnyTile = false;
+
+      for (const tile of remainingTiles) {
+        for (let r = 0; r < GRID_SIZE; r++) {
+          for (let c = 0; c < GRID_SIZE; c++) {
+            const canPlace = !tile.used &&
+              tile.shape.every(([dr, dc]) => {
+                const tr = r + dr;
+                const tc = c + dc;
+                return (
+                  tr >= 0 &&
+                  tr < GRID_SIZE &&
+                  tc >= 0 &&
+                  tc < GRID_SIZE &&
+                  currentGrid[tr][tc] === null
+                );
+              });
+
+            if (canPlace) {
+              canPlaceAnyTile = true;
+              break;
+            }
+          }
+          if (canPlaceAnyTile) break;
+        }
+        if (canPlaceAnyTile) break;
+      }
+
+      if (!canPlaceAnyTile) {
+        setIsGameOver(true);
+      }
+    },
+    []
+  );
+
+  useEffect(() => {
+    if (!isGameOver && tileSet.length > 0) {
+      checkGameOver(grid, tileSet);
+    }
+  }, [tileSet, grid, isGameOver, checkGameOver]);
+
+  // Removed: GEMINI API HINT FUNCTION
+
+  // --- RENDER ---
+
+  return (
+    <div className="min-h-screen p-6 font-sans flex flex-col items-center bg-gradient-to-br from-slate-100 to-slate-200">
+      {/* Header and Scoreboard */}
+      <div className="w-full max-w-6xl flex justify-between items-center mb-8 p-4 bg-white rounded-xl shadow-xl border-b-4 border-indigo-400">
+        <h1 className="text-3xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 tracking-wide">
+          Color Cascade
+        </h1>
+
+        <div className="flex items-center space-x-6 text-center">
+          <a
+            href="/games"
+            className="p-3 rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
+            aria-label="Go to Home"
+          >
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
+              />
+            </svg>
+          </a>
+
+          <div className="bg-slate-50 px-4 py-2 rounded-lg border border-slate-200">
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+              Score
+            </p>
+            <p className="text-2xl font-black text-green-600">
+              {score}
+            </p>
+          </div>
+          <div className="bg-slate-50 px-4 py-2 rounded-lg border border-slate-200">
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+              Best
+            </p>
+            <p className="text-2xl font-black text-red-500">
+              {highScore}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-col lg:flex-row w-full max-w-[1600px] space-y-8 lg:space-y-0 lg:space-x-8 justify-center items-start">
+        {/* Main Game Grid */}
+        <div className="flex-shrink-0 mx-auto">
+          <MainGrid
+            grid={grid}
+            onDrop={handleDrop}
+            onDragOver={handleDragOver}
+            highlightCells={highlightCells}
+            matchCells={matchCells}
+          />
+        </div>
+
+        {/* Tile Palette / Controls */}
+        <div className="w-full max-w-md lg:w-64 flex flex-col space-y-6 mx-auto">
+          {/* Pieces Container */}
+          <div className="p-4 bg-white rounded-xl shadow-xl border-2 border-gray-200 w-full min-h-[400px] flex flex-col">
+            <p className="text-lg font-bold text-gray-700 mb-6 text-center border-b pb-4 tracking-tight">
+              DRAG PIECES
+            </p>
+            <div
+              className="flex flex-col items-center justify-start space-y-10 flex-grow py-4"
+              onDragEnd={handleDragEnd}
+            >
+              {tileSet.length === 0 ? (
+                <div className="py-12 text-gray-400 animate-pulse">
+                  Generating pieces...
+                </div>
+              ) : (
+                tileSet.map((tile) => (
+                  <TilePreview
+                    key={tile.id}
+                    tile={tile}
+                    draggable={true}
+                    onDragStart={handleDragStart}
+                    scale={1.1}
+                  />
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* New Game Button (relocated from LLM hint block) */}
+          <button
+            onClick={resetGame}
+            className="w-full py-4 text-lg font-bold rounded-xl bg-indigo-600 text-white shadow-lg shadow-indigo-200 hover:bg-indigo-700 active:bg-indigo-800 transition-all transform active:scale-95"
+          >
+            New Game
+          </button>
+        </div>
+      </div>
+
+      {/* Game Over Modal */}
+      {isGameOver && (
+        <div className="fixed inset-0 bg-slate-900/90 flex items-center justify-center z-50 p-4 backdrop-blur-sm transition-opacity">
+          <div className="bg-white rounded-2xl shadow-2xl p-10 w-full max-w-md text-center border-4 border-red-500 transform animate-bounce-in">
+            <h2 className="text-5xl font-black text-gray-800 mb-2">
+              GAME OVER
+            </h2>
+            <div className="w-24 h-1 bg-red-500 mx-auto mb-6 rounded-full"></div>
+
+            <div className="mb-8 space-y-2">
+              <p className="text-gray-500 font-medium uppercase tracking-widest text-sm">
+                Final Score
+              </p>
+              <p className="text-6xl font-black text-indigo-600">
+                {score}
+              </p>
+            </div>
+
+            <button
+              onClick={resetGame}
+              className="w-full py-4 text-xl font-bold rounded-xl bg-green-500 text-white shadow-xl shadow-green-200 hover:bg-green-600 hover:shadow-2xl transition-all transform hover:-translate-y-1"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 };
 
 export default App;
