@@ -3,6 +3,7 @@
  */
 "use client";
 
+import { Router } from "lucide-react";
 import React, {
   useEffect,
   useRef,
@@ -10,6 +11,7 @@ import React, {
   useCallback,
   useMemo,
 } from "react";
+import { useRouter } from "next/navigation"
 
 // --- START: Mocked UI Components (Replacing external dependencies) ---
 interface ButtonProps {
@@ -127,7 +129,7 @@ const initializeGrid = (): Bubble[] => {
 export default function BubbleShooterGame() {
   // Ref for generating unique IDs for new bubbles
   const idCounterRef = useRef(0);
-
+  const router = useRouter()
   // --- Game State ---
   const [gridBubbles, setGridBubbles] = useState<Bubble[]>(initializeGrid());
   const [shotBubble, setShotBubble] = useState<Bubble | null>(null);
@@ -809,6 +811,7 @@ export default function BubbleShooterGame() {
   // --- UI Handlers ---
 
   const handleBack = () => {
+    router.push("/games") // ✅ Navigate back to /games
     console.log("Navigating back to games...");
   };
 

@@ -8,33 +8,171 @@ import { ArrowLeft, Gamepad2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 const games = [
-  { title: "Color Cascade", slug: "color-cascade", description: "Tactical Match-3: Strategically place colored blocks to create chains of three or more, triggering spectacular cascades and massive score bonuses." },
-  { title: "Color Drift Memory", slug: "color-driftmemory", description: "Spatial & Subtractive Challenge: Test your spatial memory and deep understanding of color mixing theory as hues subtly drift and blend on the grid." },
-  { title: "Color Bubble Shooter", slug: "color-bubbleshooter", description: "Spatial & Subtractive Challenge: Test your spatial memory and deep understanding of color mixing theory as hues subtly drift and blend on the grid." },
-  { title: "Color Rush", slug: "color-rush", description: "High-Octane Reaction: A lightning-fast game where you must react instantly to shifting hues and flashing color prompts before the timer runs out." },
-  { title: "Color Memory", slug: "color-memory", description: "Sequential Recall: Sharpen your short-term memory by perfectly recalling increasingly complex and lengthy sequences of flashing colors." },
-  { title: "Color Match", slug: "quick-match", description: "Rhythm-Based Frequency: Match the rhythm and frequency of a pulsing beat by selecting the corresponding color to stay in sync." },
-  { title: "Color DepthField", slug: "color-depth", description: "Layering & Blending Mastery: Move beyond simple matching into the complex world of transparency, blending modes, and stacking order to solve visual puzzles." },
-  { title: "Color Command", slug: "color-command", description: "Tricky Cognitive Test: Follow a series of misleading and complex color-based commands that will challenge your focus and cognitive flexibility." },
-  { title: "Color Duplicator", slug: "color-duplicator", description: "Pattern Replication Speed: Quickly and accurately recreate intricate color patterns under intense time pressure, testing your visual acuity and speed." },
-  { title: "Color Frequency", slug: "color-frequency", description: "Synesthetic Synchronization: Match the vibrational frequency or rhythmic pulse of an element with the correct corresponding color." },
-  { title: "Color Flash", slug: "flash-colors", description: "Instant Color Recognition: A quick-fire test of instant color recognition where you must select the correct hue before it vanishes in a flash." },
-  { title: "Color Shadow", slug: "color-shadow", description: "Deep Visual Recall: Tests your ability to mentally reconstruct and recall the specific color of a shape, based only on its grayscale shadow." },
-  { title: "Color Spectral", slug: "color-spectral", description: "Gradient Precision: A subtle challenge where you must find the single, slightly out-of-order tile within a long, continuous color gradient strip." },
-  { title: "Color Synesthesia", slug: "color-synesthesia", description: "Sound/Emotion Mapping: Navigate a complex environment where sound and emotion are mapped directly to color, requiring you to react to non-visual cues." },
-  { title: "Color Fusion Lab", slug: "color-fusionlab", description: "Digital Color Precision: Use sliders to precisely mix and challenge your understanding of digital color spaces (RGB) to match a target hue exactly." },
-  { title: "Color Catcher", slug: "color-catcher", description: "Fading Hues Reflex: A fast-paced reflex game where you must \"catch\" falling blocks before their color fully fades to white or black." },
-  { title: "Color Chromaticfilter", slug: "color-chromaticfilter", description: "Unique Hue Hunt: Find the single unique color among four nearly identical tiles, while a highly saturated, constantly shifting background tricks your eyes." },
-  { title: "Color SpectrumFlashpoint", slug: "color-spectrumflashpoint", description: "Advanced Blending Puzzles: Combines challenges of blending, transparency, and stacking order in a fast-paced environment to solve complex color problems." },
-  { title: "Color Spectral Echo", slug: "color-spectralecho", description: "RGB to CMY Translation: Translate your memory of light (RGB) into the required subtractive filters (CMY) under high-stakes, timed conditions." },
-  { title: "Color Chroma Drift", slug: "color-chromadrift", description: "Simulated Vision Puzzle: A challenging puzzle game played entirely in an environment that simulates a specific type of color blindness, requiring a shift in perception." },
-  { title: "Color Chroma Gauntlet", slug: "color-chroma", description: "Pigment Resource Strategy: A resource management and strategy game based on the economics and blending limits of real-world pigments (CMY/RYB)." },
-  { title: "Color Cascade Puzzle", slug: "color-cascadepuzzle", description: "Advanced Theory Puzzle: A grid-based game that challenges your spatial awareness and deep understanding of color mixing theory with limited moves." },
-  { title: "Color Arithmetic", slug: "color-arithmetic", description: "Solve Color Equations: Solve complex visual puzzles that are framed as mathematical equations using color values instead of numbers (e.g., Red + Blue = Magenta)." },
-  { title: "Color Count", slug: "color-count", description: "Rapid Counting & Matching: Count and match rapidly changing and overlapping colors to meet a target quota before the screen becomes chaotic." },
-  { title: "Color Cleaner", slug: "color-cleaner", description: "Board Clearing Strategy: Strategically match and eliminate colors to clear the entire board in the fewest moves possible." },
-  { title: "Color Sort", slug: "color-sort", description: "Hue Spectrum Ordering: Quickly and accurately sort a jumbled set of colors back into the correct order along the visible light spectrum." },
-  { title: "Color translator", slug: "color-translator", description: "Naming & Communication Test: A unique game focusing on color communication and naming conventions, requiring you to label or identify hues based on descriptive text." },
+  { 
+    title: "Color Cascade", 
+    slug: "color-cascade", 
+    description: "Tactical Match-3: Strategically connect three or more colored tiles to trigger spectacular chain reactions and massive score bonuses." 
+  },
+  { 
+    title: "Color Orbit", 
+    slug: "color-orbit", 
+    description: "Circular Logic Puzzle: Rotate orbiting color rings to align and match incoming colored projectiles before they collide with the core." 
+  },
+  { 
+    title: "Color Drift Memory", 
+    slug: "color-driftmemory", 
+    description: "Spatial & Subtractive Challenge: Memorize a pattern, then recreate it as the hues subtly drift and blend across the grid, testing your memory and color theory." 
+  },
+  { 
+    title: "Color Conflict", 
+    slug: "color-conflict", 
+    description: "Strategic Area Control: Use color resources to claim territory and defend against opposing hues in a turn-based strategy game." 
+  },
+  { 
+    title: "Color Camouflage", 
+    slug: "color-camouflage", 
+    description: "Perception & Stealth: Locate a target object whose color perfectly blends with a constantly shifting, complex background pattern." 
+  },
+  { 
+    title: "Color Negative", 
+    slug: "color-negative", 
+    description: "Inversion Puzzle: Solve visual puzzles by mentally flipping colors to their exact inverse (negative) to match the target pattern." 
+  },
+  { 
+    title: "Color Palette Thief", 
+    slug: "color-palettethief", 
+    description: "Stealth & Resource Management: Steal specific color swatches from a guarded palette without triggering an alarm or running out of time." 
+  },
+  { 
+    title: "Color Hex Breaker", 
+    slug: "color-hex", 
+    description: "Geometric Match-3: A fast-paced puzzle game on a hexagonal grid, requiring strategic matching and awareness of radiating color connections." 
+  },
+  { 
+    title: "Color Bubble Shooter", 
+    slug: "color-bubbleshooter", 
+    description: "Precision Aiming: Launch colored bubbles to create groups of three or more, clearing the ceiling before it descends." 
+  },
+  { 
+    title: "Color Rush", 
+    slug: "color-rush", 
+    description: "High-Octane Reaction: Select the correct color based on a rapid-fire visual or text prompt before the time bar empties." 
+  },
+  { 
+    title: "Color Memory", 
+    slug: "color-memory", 
+    description: "Sequential Recall: Sharpen your short-term memory by perfectly recalling increasingly complex and lengthy sequences of flashing colors." 
+  },
+  { 
+    title: "Color Match", 
+    slug: "quick-match", 
+    description: "Speed Recognition: Instantly match the central color to one of the surrounding options under intense time pressure." 
+  },
+  { 
+    title: "Color DepthField", 
+    slug: "color-depth", 
+    description: "Layering & Blending Mastery: Arrange semi-transparent color layers to perfectly replicate a target blended hue, mastering digital color depth." 
+  },
+  { 
+    title: "Color Command", 
+    slug: "color-command", 
+    description: "Tricky Cognitive Test: Follow a series of misleading commands where the color word and the color of the word itself often conflict (Stroop effect challenge)." 
+  },
+  { 
+    title: "Color Duplicator", 
+    slug: "color-duplicator", 
+    description: "Pattern Replication Speed: Quickly and accurately recreate intricate color patterns on a secondary grid under time pressure." 
+  },
+  { 
+    title: "Color Frequency", 
+    slug: "color-frequency", 
+    description: "Synesthetic Synchronization: Associate and match the rhythmic pulse or vibrational frequency of an element with the correct corresponding color on the spectrum." 
+  },
+  { 
+    title: "Color Flash", 
+    slug: "flash-colors", 
+    description: "Instant Color Recognition: A quick-fire test of instant color recognition where you must identify and select the correct hue before it vanishes in a flash." 
+  },
+  { 
+    title: "Color Shadow", 
+    slug: "color-shadow", 
+    description: "Deep Visual Recall: Tests your ability to mentally reconstruct and recall the specific original color of a shape, based only on its grayscale shadow." 
+  },
+  { 
+    title: "Color Spectral", 
+    slug: "color-spectral", 
+    description: "Gradient Precision: A subtle challenge where you must find the single, slightly out-of-order tile within a long, continuous color gradient strip." 
+  },
+  { 
+    title: "Color Synesthesia", 
+    slug: "color-synesthesia", 
+    description: "Sound/Emotion Mapping: Match non-visual cues (like musical tones or emotional text) to their correctly mapped color to solve the puzzle." 
+  },
+  { 
+    title: "Color Fusion Lab", 
+    slug: "color-fusionlab", 
+    description: "Digital Color Precision: Use sliders to precisely mix and challenge your understanding of digital color spaces (RGB) to match a target hue exactly." 
+  },
+  { 
+    title: "Color Catcher", 
+    slug: "color-catcher", 
+    description: "Fading Hues Reflex: A fast-paced reflex game where you must 'catch' falling blocks before their color fully fades to white or black." 
+  },
+  { 
+    title: "Color Chromaticfilter", 
+    slug: "color-chromaticfilter", 
+    description: "Unique Hue Hunt: Find the single unique color among many nearly identical tiles, while a highly saturated, constantly shifting filter tricks your eyes." 
+  },
+  { 
+    title: "Color SpectrumFlashpoint", 
+    slug: "color-spectrumflashpoint", 
+    description: "Advanced Blending Puzzles: Combines challenges of blending, transparency, and stacking order in a fast-paced environment to solve complex color problems." 
+  },
+  { 
+    title: "Color Spectral Echo", 
+    slug: "color-spectralecho", 
+    description: "RGB to CMY Translation: Translate your memory of additive light (RGB) into the required subtractive filter values (CMY) under timed conditions." 
+  },
+  { 
+    title: "Color Chroma Drift", 
+    slug: "color-chromadrift", 
+    description: "Simulated Vision Puzzle: A challenging puzzle game played entirely in an environment that simulates a specific type of color blindness, requiring a shift in perception." 
+  },
+  { 
+    title: "Color Chroma Gauntlet", 
+    slug: "color-chroma", 
+    description: "Pigment Resource Strategy: A resource management and strategy game based on the economics and blending limits of real-world pigments (CMY/RYB)." 
+  },
+  { 
+    title: "Color Cascade Puzzle", 
+    slug: "color-cascadepuzzle", 
+    description: "Advanced Theory Puzzle: A grid-based game that challenges your spatial awareness and deep understanding of color mixing theory with limited moves." 
+  },
+  { 
+    title: "Color Arithmetic", 
+    slug: "color-arithmetic", 
+    description: "Solve Color Equations: Solve complex visual puzzles framed as mathematical equations using color values instead of numbers (e.g., Red + Blue = Magenta)." 
+  },
+  { 
+    title: "Color Count", 
+    slug: "color-count", 
+    description: "Rapid Counting & Matching: Count and match rapidly changing and overlapping colors to meet a target quota before the screen becomes chaotic." 
+  },
+  { 
+    title: "Color Cleaner", 
+    slug: "color-cleaner", 
+    description: "Board Clearing Strategy: Strategically match and eliminate colors to clear the entire board in the fewest moves possible." 
+  },
+  { 
+    title: "Color Sort", 
+    slug: "color-sort", 
+    description: "Hue Spectrum Ordering: Quickly and accurately sort a jumbled set of colors back into the correct order along the visible light spectrum." 
+  },
+  { 
+    title: "Color translator", 
+    slug: "color-translator", 
+    description: "Naming & Communication Test: Identify the exact hue based on descriptive text (e.g., 'seafoam green' or 'electric crimson'), testing color vocabulary." 
+  },
 ]
 
 export default function GameHomePage() {
@@ -43,9 +181,7 @@ export default function GameHomePage() {
       {/* Background decoration (optional, but good for visual style) */}
       <div className="absolute inset-0">
         {/* Subtle, abstract color pattern/gradient can go here */}
-        <div className="absolute inset-0 opacity-10" style={{
-          backgroundImage: 'radial-gradient(circle at 10% 20%, rgba(255, 0, 150, 0.4) 0%, rgba(0, 200, 255, 0.4) 100%)',
-        }}></div>
+        <div className="absolute inset-0 opacity-10"></div>
       </div>
 
       <main className="relative z-10 min-h-screen p-6">
