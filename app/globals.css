@@ -118,8 +118,6 @@
     @apply border-border outline-ring/50;
   }
   body {
-    /* REMOVED @apply bg-background to allow the body to be transparent 
-       and reveal the <AnimatedBackground /> component behind it. */
-    @apply text-foreground;
+    @apply bg-background text-foreground;
   }
 }
