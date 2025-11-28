@@ -181,7 +181,9 @@ export default function GameHomePage() {
       {/* Background decoration (optional, but good for visual style) */}
       <div className="absolute inset-0">
         {/* Subtle, abstract color pattern/gradient can go here */}
-        <div className="absolute inset-0 opacity-10"></div>
+        <div className="absolute inset-0 opacity-10" style={{
+          backgroundImage: 'radial-gradient(circle at 10% 20%, rgba(255, 0, 150, 0.4) 0%, rgba(0, 200, 255, 0.4) 100%)',
+        }}></div>
       </div>
 
       <main className="relative z-10 min-h-screen p-6">
