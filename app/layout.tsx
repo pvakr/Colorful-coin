@@ -4,7 +4,7 @@ import type { Metadata } from "next"
 import AnimatedBackground from "@/components/AnimatedBackground"
 
 export const metadata: Metadata = {
-  title: "Colorful Coin",
+  title: "Color Coin",
   description: "Spin the light. Feel the spectrum.",
     generator: 'v0.app'
 }
