@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { randomColor } from "../lib/colors";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -10,8 +9,6 @@ import { Timer, Trophy, Zap } from "lucide-react";
 import { motion } from "framer-motion";
 
 export default function QuickMatch() {
-  const router = useRouter();
-
   const [left, setLeft] = useState("#ff0000");
   const [right, setRight] = useState("#00ff00");
   const [score, setScore] = useState(0);

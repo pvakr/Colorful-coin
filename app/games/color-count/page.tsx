@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
 import { CheckCircle, XCircle } from "lucide-react"
 import GameWrapper from "@/components/GameWrapper"
 import { Button } from "@/components/ui/button"

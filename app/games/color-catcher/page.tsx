@@ -2,7 +2,6 @@
 import { useEffect, useState, useRef } from "react"
 import { motion } from "framer-motion"
 import "../../globals.css"
-import { useRouter } from "next/navigation"
 import GameWrapper from "@/components/GameWrapper"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"

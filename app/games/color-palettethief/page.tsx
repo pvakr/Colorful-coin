@@ -154,11 +154,14 @@ const PaletteThiefGame = () => {
     window.location.href = "/games";
   };
 
-  const stats: { label: string; value: string | number; icon: LucideIcon }[] = [
-    { label: "Score", value: `${score}/${DOMINANT_COUNT}`, icon: Trophy as React.ElementType },
-    { label: "Best", value: `${sessionHighScore}/${DOMINANT_COUNT}`, icon: Target as React.ElementType },
-    { label: "Round", value: gameStarted ? "Active" : "Ready", icon: Palette as React.ElementType },
-  ];
+
+
+const stats: { label: string; value: string | number; icon: LucideIcon }[] = [
+  { label: "Score", value: `${score}/${DOMINANT_COUNT}`, icon: Trophy },
+  { label: "Best", value: `${sessionHighScore}/${DOMINANT_COUNT}`, icon: Target },
+  { label: "Round", value: gameStarted ? "Active" : "Ready", icon: Palette },
+]
+
 
   return (
     <GameWrapper

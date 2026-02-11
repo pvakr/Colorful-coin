@@ -2,8 +2,14 @@
 
 import { ReactNode } from "react"
 import { motion } from "framer-motion"
-import { Sparkles } from "lucide-react"
+import { Sparkles, LucideIcon } from "lucide-react"
 import Link from "next/link"
+
+interface GameStat {
+  label: string
+  value: string | number
+  icon?: ReactNode | LucideIcon
+}
 
 interface GameWrapperProps {
   title: string
@@ -11,11 +17,7 @@ interface GameWrapperProps {
   children: ReactNode
   showBackButton?: boolean
   backUrl?: string
-  stats?: {
-    label: string
-    value: string | number
-    icon?: ReactNode
-  }[]
+  stats?: GameStat[]
 }
 
 export default function GameWrapper({
@@ -66,21 +68,28 @@ export default function GameWrapper({
           {/* Stats */}
           {stats.length > 0 && (
             <div className="flex items-center gap-3">
-              {stats.map((stat, index) => (
-                <motion.div
-                  key={stat.label}
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.5, delay: index * 0.1 }}
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/10 backdrop-blur border border-white/20"
-                >
-                  {stat.icon && <span className="text-white/70">{stat.icon}</span>}
-                  <div>
-                    <p className="text-xs text-white/50">{stat.label}</p>
-                    <p className="text-white font-semibold">{stat.value}</p>
-                  </div>
-                </motion.div>
-              ))}
+              {stats.map((stat, index) => {
+                const Icon =
+                  typeof stat.icon === "function" ? stat.icon : null
+
+                return (
+                  <motion.div
+                    key={stat.label}
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.5, delay: index * 0.1 }}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/10 backdrop-blur border border-white/20"
+                  >
+                    {Icon && <Icon className="w-4 h-4 text-white/70" />}
+                    {typeof stat.icon !== "function" && stat.icon}
+
+                    <div>
+                      <p className="text-xs text-white/50">{stat.label}</p>
+                      <p className="text-white font-semibold">{stat.value}</p>
+                    </div>
+                  </motion.div>
+                )
+              })}
             </div>
           )}
         </motion.div>

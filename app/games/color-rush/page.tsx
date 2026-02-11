@@ -8,6 +8,7 @@ import GameWrapper from "@/components/GameWrapper"
 import { Timer, Trophy, Zap } from "lucide-react"
 import { motion } from "framer-motion"
 
+
 const COLORS = ["red", "blue", "green", "yellow", "purple"]
 const TILE_COUNT = 25
 const ROUND_TIME = 8000
@@ -169,4 +170,5 @@ export default function ColorRushGame() {
       </div>
     </GameWrapper>
   )
+}
 

@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import GameWrapper from "@/components/GameWrapper"
@@ -31,7 +30,6 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 export default function FlashColors() {
-  const router = useRouter()
   const [started, setStarted] = useState(false)
   const [round, setRound] = useState(1)
   const [score, setScore] = useState(0)
