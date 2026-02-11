@@ -3,7 +3,6 @@
  */
 "use client";
 
-import { Router } from "lucide-react";
 import React, {
   useEffect,
   useRef,
@@ -11,42 +10,11 @@ import React, {
   useCallback,
   useMemo,
 } from "react";
-import { useRouter } from "next/navigation"
-
-// --- START: Mocked UI Components (Replacing external dependencies) ---
-interface ButtonProps {
-  children: React.ReactNode;
-  onClick?: () => void;
-  className?: string;
-}
-
-const ArrowLeft = () => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="16"
-    height="16"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className="mr-2"
-  >
-    <path d="m12 19-7-7 7-7" />
-    <path d="M19 12H5" />
-  </svg>
-);
-
-const Button: React.FC<ButtonProps> = ({ children, onClick, className = "" }) => (
-  <button
-    onClick={onClick}
-    className={`px-4 py-2 rounded-lg font-semibold transition-colors ${className}`}
-  >
-    {children}
-  </button>
-);
-// --- END: Mocked UI Components ---
+import { useRouter } from "next/navigation";
+import GameWrapper from "@/components/GameWrapper";
+import { Button } from "@/components/ui/button";
+import { motion } from "framer-motion";
+import { ArrowLeft, Trophy, Target, Zap } from "lucide-react";
 
 // --- Game Constants and Types ---
 const BUBBLE_RADIUS = 18;
@@ -830,67 +798,62 @@ export default function BubbleShooterGame() {
   };
 
   return (
-    <div
-      className="min-h-screen flex flex-col items-center justify-center p-6 text-white relative"
-      onClick={gameStatus === "ready" ? handleShoot : undefined}
+    <GameWrapper
+      title="Bubble Shooter"
+      description="Pop matching bubbles before they reach the bottom!"
+      stats={[
+        { label: "Score", value: score, icon: <Trophy className="w-4 h-4" /> },
+      ]}
     >
-      <div className="fixed top-4 left-4 z-10">
-        <Button
-          onClick={handleBack}
-          className="bg-purple-600 hover:bg-purple-700 text-white shadow-lg"
+      <div className="w-full max-w-2xl">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
         >
-          <ArrowLeft />
-          Back to Games
-        </Button>
-      </div>
-
-      <section className="mx-auto flex flex-col items-center justify-start">
-        <h1 className="text-4xl font-extrabold mb-4 text-[#FDE047] drop-shadow-lg">
-          ⚪ Bubble Shooter
-        </h1>
-        <p className="text-xl font-bold mb-4 text-white/90">
-          Score: <span className="text-[#34D399]">{score}</span>
-        </p>
-
-        <div className="relative border-4 border-slate-700 rounded-lg shadow-2xl overflow-hidden">
-          <canvas
-            ref={canvasRef}
-            width={gameBoundary.width}
-            height={gameBoundary.height}
-            onMouseMove={handleMouseMove}
-          />
-        </div>
-
-        <div className="mt-6 flex flex-col items-center gap-4">
-          {gameStatus === "ready" && (
-            <p className="text-lg text-yellow-300">
-              Aim with Mouse, Click to Shoot!
-            </p>
-          )}
-          {gameStatus === "playing" && (
-            <p className="text-lg text-cyan-300">Bubble in Flight...</p>
-          )}
-          {gameStatus === "gameover" && (
-            <Button
-              onClick={restartGame}
-              className="bg-red-500 hover:bg-red-600 text-white text-xl p-4 shadow-xl animate-pulse"
-            >
-              RESTART GAME
-            </Button>
-          )}
-
-          <div className="flex items-center space-x-4 p-3 bg-gray-800/70 rounded-xl">
-            <p className="text-sm font-medium">Next:</p>
-            <div
-              className="w-8 h-8 rounded-full shadow-inner"
-              style={{
-                backgroundColor: nextBubble?.color || "gray",
-                border: "2px solid white",
-              }}
+          <div className="relative border-4 border-slate-700 rounded-xl shadow-2xl overflow-hidden bg-slate-900/50 backdrop-blur">
+            <canvas
+              ref={canvasRef}
+              width={gameBoundary.width}
+              height={gameBoundary.height}
+              onMouseMove={handleMouseMove}
+              className="cursor-crosshair"
             />
           </div>
-        </div>
-      </section>
-    </div>
+
+          <div className="mt-6 flex flex-col items-center gap-4">
+            {gameStatus === "ready" && (
+              <p className="text-lg text-yellow-300">Aim with Mouse, Click to Shoot!</p>
+            )}
+            {gameStatus === "playing" && (
+              <p className="text-lg text-cyan-300 animate-pulse">Bubble in Flight...</p>
+            )}
+            {gameStatus === "gameover" && (
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="flex flex-col items-center gap-4"
+              >
+                <p className="text-2xl font-bold text-white">Game Over!</p>
+                <Button
+                  onClick={restartGame}
+                  className="bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white text-xl px-8 py-3 shadow-xl"
+                >
+                  RESTART GAME
+                </Button>
+              </motion.div>
+            )}
+
+            <div className="flex items-center space-x-4 p-3 bg-white/10 backdrop-blur rounded-xl border border-white/20">
+              <p className="text-sm font-medium text-white/80">Next:</p>
+              <div
+                className="w-10 h-10 rounded-full shadow-inner border-2 border-white/30"
+                style={{ backgroundColor: nextBubble?.color || "gray" }}
+              />
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    </GameWrapper>
   );
 }

@@ -1,6 +1,8 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { motion } from "framer-motion";
+import { ArrowLeft, Download, RotateCcw, Undo, Redo, Palette, Sparkles } from "lucide-react";
 
 type Props = {
   title: string;
@@ -62,7 +64,6 @@ export default function ColoringImage({
     const w = Math.floor(iw * scale), h = Math.floor(ih * scale);
     const x = Math.floor((cw - w) / 2), y = Math.floor((ch - h) / 2);
     ctx.imageSmoothingEnabled = true;
-    // @ts-ignore
     ctx.imageSmoothingQuality = "high";
     ctx.drawImage(img, x, y, w, h);
     hist.current = [ctx.getImageData(0, 0, c.width, c.height)];
@@ -89,7 +90,7 @@ export default function ColoringImage({
   const hexToRgba = (hex: string): [number,number,number,number] => {
     if (!hex) return [0,0,0,255];
     let h = hex.trim().replace(/^#/, "");
-    if (h.length === 3) h = h.split("").map(ch => ch + ch).join(""); // support #fff
+    if (h.length === 3) h = h.split("").map(ch => ch + ch).join("");
     if (!/^[0-9a-fA-F]{6}$/.test(h)) return [0,0,0,255];
     const r = parseInt(h.slice(0,2),16);
     const g = parseInt(h.slice(2,4),16);
@@ -177,50 +178,173 @@ export default function ColoringImage({
   };
 
   return (
-    <div className="min-h-screen p-6">
-      <div className="mx-auto max-w-6xl">
-        <div className="mb-4 flex items-center justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-3">
-            <Link href="/coloring" className="px-3 py-1 rounded-lg border bg-white hover:bg-gray-50">← Home</Link>
-          </div>
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="min-h-screen p-6"
+    >
+      <div className="mx-auto max-w-7xl">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-6 p-4 rounded-2xl bg-gradient-to-r from-purple-600/20 to-pink-600/20 backdrop-blur-xl border border-white/10"
+        >
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div>
+                <h1 className="text-xl font-bold text-white flex items-center gap-2">
+                  <Palette className="h-5 w-5 text-purple-400" />
+                  {title}
+                </h1>
+                <p className="text-sm text-white/60">Click to fill areas with color</p>
+              </div>
+            </div>
 
-          <div className="flex items-center gap-3 flex-wrap">
-            <label className="text-sm text-gray-700 flex items-center gap-2">
-              Tolerance
-              <input type="range" min={0} max={140} value={tolerance}
-                     onChange={(e) => setTolerance(parseInt(e.target.value, 10))}/>
-              <span className="tabular-nums">{tolerance}</span>
-            </label>
-            <button onClick={onUndo} className="px-3 py-1 rounded-lg border bg-white hover:bg-gray-50">Undo</button>
-            <button onClick={onRedo} className="px-3 py-1 rounded-lg border bg-white hover:bg-gray-50">Redo</button>
-            <button onClick={onReset} className="px-3 py-1 rounded-lg border bg-white hover:bg-gray-50">Reset</button>
-            <button onClick={onDownload} className="px-3 py-1 rounded-lg border bg-white hover:bg-gray-50">Download</button>
-          </div>
-        </div>
+            <div className="flex items-center gap-3 flex-wrap">
+              {/* Tolerance */}
+              <div className="flex items-center gap-2 bg-white/10 rounded-xl px-3 py-2 backdrop-blur-md">
+                <span className="text-xs text-white/60">Tolerance</span>
+                <input
+                  type="range"
+                  min={0}
+                  max={140}
+                  value={tolerance}
+                  onChange={(e) => setTolerance(parseInt(e.target.value, 10))}
+                  className="w-20 h-2 rounded-full accent-purple-500 bg-white/20"
+                />
+                <span className="text-xs text-white/80 tabular-nums w-6">{tolerance}</span>
+              </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-6">
-          <div className="rounded-xl border bg-white p-3 shadow">
-            <canvas ref={canvasRef} onClick={onCanvasClick} className="w-full h-auto cursor-crosshair block rounded-md"/>
-          </div>
+              <motion.button
+                onClick={onUndo}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="p-2.5 rounded-xl bg-white/10 text-white/80 hover:bg-white/20 hover:text-white backdrop-blur-md"
+                title="Undo"
+              >
+                <Undo className="h-5 w-5" />
+              </motion.button>
 
-          <aside className="rounded-xl border bg-white p-4 shadow">
-            <h3 className="text-sm font-semibold mb-2">Palette</h3>
-            <div className="grid grid-cols-8 gap-2 mb-3">
+              <motion.button
+                onClick={onRedo}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="p-2.5 rounded-xl bg-white/10 text-white/80 hover:bg-white/20 hover:text-white backdrop-blur-md"
+                title="Redo"
+              >
+                <Redo className="h-5 w-5" />
+              </motion.button>
+
+              <motion.button
+                onClick={onReset}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="flex items-center gap-2 rounded-xl bg-white/10 px-3 py-2.5 text-white/80 hover:bg-white/20 hover:text-white backdrop-blur-md"
+              >
+                <RotateCcw className="h-4 w-4" />
+                <span className="hidden sm:inline text-sm">Reset</span>
+              </motion.button>
+
+              <motion.button
+                onClick={onDownload}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 px-4 py-2.5 text-white font-medium shadow-lg shadow-purple-500/25"
+              >
+                <Download className="h-4 w-4" />
+                <span className="hidden sm:inline text-sm">Download</span>
+              </motion.button>
+            </div>
+          </div>
+        </motion.div>
+
+        <div className="grid lg:grid-cols-[1fr_320px] gap-6">
+          {/* Canvas */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl overflow-hidden"
+          >
+            <div className="p-4">
+              <canvas
+                ref={canvasRef}
+                onClick={onCanvasClick}
+                className="w-full h-auto cursor-crosshair rounded-lg block"
+              />
+            </div>
+          </motion.div>
+
+          {/* Palette Sidebar */}
+          <motion.aside
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.2 }}
+            className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl p-6 space-y-6"
+          >
+            <div className="flex items-center gap-2 text-white/80">
+              <Sparkles className="h-5 w-5 text-purple-400" />
+              <h2 className="font-semibold">Color Palette</h2>
+            </div>
+
+            {/* Color Grid */}
+            <div className="grid grid-cols-7 gap-2">
               {PALETTE.map((c) => (
-                <button key={c} aria-label={c} onClick={() => setColor(c)}
-                        className={`h-8 w-8 rounded-md border ${color===c ? "ring-2 ring-blue-500 border-blue-600" : "border-gray-300 hover:scale-105"} transition`}
-                        style={{ backgroundColor: c }}/>
+                <motion.button
+                  key={c}
+                  onClick={() => setColor(c)}
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.95 }}
+                  className={`h-9 w-9 rounded-lg border-2 transition-all ${
+                    color === c
+                      ? "ring-2 ring-purple-400 ring-offset-2 ring-offset-transparent border-white"
+                      : "border-white/20 hover:border-white/40"
+                  }`}
+                  style={{ backgroundColor: c }}
+                  aria-label={c}
+                />
               ))}
             </div>
-            <div className="flex items-center gap-3">
-              <input type="color" value={color} onChange={(e) => setColor(e.target.value)}
-                     className="h-8 w-12 p-0 bg-transparent border rounded"/>
-              <input type="text" value={color} onChange={(e) => setColor(e.target.value)}
-                     className="border rounded px-2 py-1 text-sm w-28"/>
+
+            {/* Custom Color */}
+            <div className="space-y-3">
+              <label className="text-sm text-white/60">Custom Color</label>
+              <div className="flex items-center gap-3">
+                <div className="relative flex-1">
+                  <input
+                    type="color"
+                    value={color}
+                    onChange={(e) => setColor(e.target.value)}
+                    className="w-full h-12 rounded-xl cursor-pointer border-0"
+                  />
+                </div>
+                <input
+                  type="text"
+                  value={color}
+                  onChange={(e) => setColor(e.target.value)}
+                  className="flex-1 rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-white font-mono uppercase backdrop-blur-md focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-400/20"
+                />
+              </div>
             </div>
-          </aside>
+
+            {/* Selected Color Preview */}
+            <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+              <p className="text-sm text-white/60 mb-2">Selected</p>
+              <div className="flex items-center gap-3">
+                <div
+                  className="w-12 h-12 rounded-xl shadow-lg border border-white/20"
+                  style={{ backgroundColor: color }}
+                />
+                <div>
+                  <p className="text-lg font-mono font-bold text-white uppercase">{color}</p>
+                  <p className="text-xs text-white/40">Click canvas to fill</p>
+                </div>
+              </div>
+            </div>
+          </motion.aside>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }

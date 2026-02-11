@@ -3,226 +3,213 @@
 import { useState, useCallback, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
+import ToolWrapper from "@/components/ToolWrapper"
+import { Eye, Plus, Trash2, Copy, Check } from "lucide-react"
 
-// --- TYPE DEFINITIONS ---
 interface ColorSwatch {
-  id: number;
-  hex: string;
+  id: number
+  hex: string
 }
 
-// Helper function to calculate a complementary color (simplified)
 const getComplementaryHex = (hex: string): string => {
-    // Simple way to get a complementary color: convert hex to RGB, invert, then convert back
-    const r = parseInt(hex.substring(1, 3), 16);
-    const g = parseInt(hex.substring(3, 5), 16);
-    const b = parseInt(hex.substring(5, 7), 16);
-    
-    // Invert the colors
-    const rComp = 255 - r;
-    const gComp = 255 - g;
-    const bComp = 255 - b;
-
-    const toHex = (c: number) => c.toString(16).padStart(2, '0');
-    return `#${toHex(rComp)}${toHex(gComp)}${toHex(bComp)}`.toUpperCase();
+  const r = parseInt(hex.substring(1, 3), 16)
+  const g = parseInt(hex.substring(3, 5), 16)
+  const b = parseInt(hex.substring(5, 7), 16)
+  const rComp = 255 - r
+  const gComp = 255 - g
+  const bComp = 255 - b
+  const toHex = (c: number) => c.toString(16).padStart(2, '0')
+  return `#${toHex(rComp)}${toHex(gComp)}${toHex(bComp)}`.toUpperCase()
 }
 
-// ---- Reusable Home Button (inline) ----
-function HomeButton({
-  label = "Back to Tools",
-  hrefFallback = "/tools",
-  className = "",
-}: { label?: string; hrefFallback?: string; className?: string }) {
-  const router = useRouter()
-  const goHome = useCallback(() => router.push(hrefFallback), [router, hrefFallback])
-
-  return (
-    <motion.button
-      onClick={goHome}
-      whileTap={{ scale: 0.97 }}
-      className={`inline-flex items-center gap-2 rounded-xl bg-slate-100 px-4 py-2 text-slate-800 ring-1 ring-slate-200 shadow-md hover:bg-slate-200 transition-colors ${className}`}
-      aria-label="Go to Tools"
-    >
-      <span className="text-lg">←</span>
-      <span className="font-semibold">{label}</span>
-    </motion.button>
-  )
-}
-
-// Initial set of background colors for contrast testing
 const INITIAL_BACKGROUNDS: ColorSwatch[] = [
-    { id: 1, hex: '#FFFFFF' }, // White
-    { id: 2, hex: '#000000' }, // Black
-    { id: 3, hex: '#808080' }, // Gray
-    { id: 4, hex: '#2C3E50' }, // Deep Blue/Navy
-    { id: 5, hex: '#F0E68C' }, // Pale Yellow
-    { id: 6, hex: '#FF6B6B' }, // Red
-];
+  { id: 1, hex: '#FFFFFF' },
+  { id: 2, hex: '#000000' },
+  { id: 3, hex: '#808080' },
+  { id: 4, hex: '#2C3E50' },
+  { id: 5, hex: '#F0E68C' },
+  { id: 6, hex: '#FF6B6B' },
+]
 
 export default function ColorRelativityTester() {
-  const [targetHex, setTargetHex] = useState('#22A7F0'); // A default medium-saturation blue
-  const [backgrounds, setBackgrounds] = useState<ColorSwatch[]>(INITIAL_BACKGROUNDS);
-  const [nextId, setNextId] = useState(INITIAL_BACKGROUNDS.length + 1);
+  const router = useRouter()
+  const [targetHex, setTargetHex] = useState('#22A7F0')
+  const [backgrounds, setBackgrounds] = useState<ColorSwatch[]>(INITIAL_BACKGROUNDS)
+  const [nextId, setNextId] = useState(INITIAL_BACKGROUNDS.length + 1)
+  const [copiedHex, setCopiedHex] = useState<string | null>(null)
 
-  // Calculate a complementary color based on the target color for automatic suggestion
-  const complementaryHex = useMemo(() => getComplementaryHex(targetHex), [targetHex]);
+  const complementaryHex = useMemo(() => getComplementaryHex(targetHex), [targetHex])
 
   const addBackground = useCallback((hex: string) => {
-    setBackgrounds(s => [...s, { id: nextId, hex: hex.toUpperCase() }]);
-    setNextId(n => n + 1);
-  }, [nextId]);
-  
+    setBackgrounds(s => [...s, { id: nextId, hex: hex.toUpperCase() }])
+    setNextId(n => n + 1)
+  }, [nextId])
+
   const updateBackground = useCallback((id: number, hex: string) => {
-    setBackgrounds(s => s.map(c => (c.id === id ? { ...c, hex: hex.toUpperCase() } : c)));
-  }, []);
+    setBackgrounds(s => s.map(c => (c.id === id ? { ...c, hex: hex.toUpperCase() } : c)))
+  }, [])
 
   const removeBackground = useCallback((id: number) => {
-    setBackgrounds(s => s.filter(c => c.id !== id));
-  }, []);
+    setBackgrounds(s => s.filter(c => c.id !== id))
+  }, [])
 
-  // Central Swatch size relative to the background cell size
-  const centralSwatchSize = '30%'; 
+  const copyToClipboard = async (hex: string) => {
+    await navigator.clipboard.writeText(hex)
+    setCopiedHex(hex)
+    setTimeout(() => setCopiedHex(null), 2000)
+  }
 
   return (
-    <div className="min-h-screen"> 
-      <main className="p-6">
-        <section 
-          className="mx-auto max-w-6xl rounded-3xl bg-white/70 backdrop-blur-md p-8 shadow-2xl ring-1 ring-white/50"
-        >
-          
-          <div className="mb-6">
-            <HomeButton />
-          </div>
-
-          <h1 className="text-3xl font-extrabold text-slate-800 mb-2 flex items-center gap-3">
-            <span role="img" aria-label="color vision test">👁️</span>
-            Color Relativity Tester
-          </h1>
-          <p className="text-slate-600 mb-6">Test how your chosen **Target Color** is visually altered by different background colors due to simultaneous contrast.</p>
-          
-          <div className="grid gap-8 lg:grid-cols-3">
-            
-            {/* 1. Control Panel (Input) */}
-            <div className="lg:col-span-1 space-y-6">
-                <h2 className="text-xl font-semibold text-slate-700">Target Color</h2>
-                
-                <div className="p-5 bg-white/80 rounded-xl border border-slate-300 shadow-md">
-                    <div className="flex items-center gap-4">
-                        <input
-                            type="color"
-                            value={targetHex}
-                            onChange={(e) => setTargetHex(e.target.value.toUpperCase())}
-                            className="w-16 h-16 rounded-lg border-none p-0 cursor-pointer"
-                        />
-                        <div className="flex-grow">
-                            <label className="block text-sm font-medium text-slate-700">Target HEX Code</label>
-                            <input
-                                type="text"
-                                value={targetHex}
-                                onChange={(e) => setTargetHex(e.target.value.toUpperCase())}
-                                maxLength={7}
-                                className="w-full text-lg font-mono p-2 rounded-lg border border-slate-300 bg-slate-50 focus:ring-indigo-400"
-                            />
-                        </div>
-                    </div>
-                    <p className="text-xs mt-3 text-slate-500">This central color remains constant—only its *perception* changes.</p>
+    <ToolWrapper
+      title="Color Relativity Tester"
+      description="Test how your target color appears on different backgrounds due to simultaneous contrast"
+      icon={<Eye className="h-6 w-6 text-white" />}
+    >
+      <div className="p-6">
+        <div className="grid lg:grid-cols-3 gap-8">
+          {/* Left Column - Controls */}
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.1 }}
+            className="space-y-6"
+          >
+            {/* Target Color */}
+            <div className="space-y-3">
+              <label className="block text-sm font-medium text-white/80">Target Color</label>
+              <div className="p-4 rounded-xl bg-white/10 backdrop-blur-md border border-white/20">
+                <div className="flex items-center gap-4">
+                  <input
+                    type="color"
+                    value={targetHex}
+                    onChange={(e) => setTargetHex(e.target.value.toUpperCase())}
+                    className="w-16 h-16 rounded-xl cursor-pointer border-0"
+                  />
+                  <div className="flex-1">
+                    <input
+                      type="text"
+                      value={targetHex}
+                      onChange={(e) => setTargetHex(e.target.value.toUpperCase())}
+                      maxLength={7}
+                      className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-white font-mono backdrop-blur-md focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/20"
+                    />
+                  </div>
+                  <motion.button
+                    onClick={() => copyToClipboard(targetHex)}
+                    whileTap={{ scale: 0.95 }}
+                    className="rounded-lg bg-white/10 p-2 text-white/70 hover:bg-white/20"
+                  >
+                    {copiedHex === targetHex ? <Check className="h-5 w-5 text-green-400" /> : <Copy className="h-5 w-5" />}
+                  </motion.button>
                 </div>
-                
-                {/* Background Swatch Management */}
-                <h2 className="text-xl font-semibold text-slate-700">Background Swatches ({backgrounds.length})</h2>
-                
-                <div className="space-y-3 p-4 bg-slate-100/70 rounded-xl border border-slate-200 shadow-inner">
-                    
-                    {/* Quick Add Buttons */}
-                    <div className="flex gap-2 pb-2 border-b border-slate-200">
-                        <motion.button
-                            onClick={() => addBackground('#FFFFFF')}
-                            whileTap={{ scale: 0.95 }}
-                            className="text-xs px-3 py-1 bg-white border border-slate-300 text-slate-700 rounded-full hover:bg-slate-100"
-                        >
-                            + White
-                        </motion.button>
-                        <motion.button
-                            onClick={() => addBackground(complementaryHex)}
-                            whileTap={{ scale: 0.95 }}
-                            className="text-xs px-3 py-1 bg-red-100 border border-red-300 text-red-700 rounded-full hover:bg-red-200"
-                        >
-                            + Complementary
-                        </motion.button>
-                    </div>
+                <p className="mt-2 text-xs text-white/50">This central color remains constant—only its perception changes</p>
+              </div>
+            </div>
 
-                    {backgrounds.map((c) => (
-                        <div key={c.id} className="flex items-center gap-2">
-                            <input
-                                type="color"
-                                value={c.hex}
-                                onChange={(e) => updateBackground(c.id, e.target.value)}
-                                className="w-8 h-8 rounded-md border-none p-0 cursor-pointer"
-                            />
-                            <input
-                                type="text"
-                                value={c.hex}
-                                onChange={(e) => updateBackground(c.id, e.target.value)}
-                                maxLength={7}
-                                className="flex-grow font-mono p-1.5 rounded-lg border border-slate-300 text-sm bg-white"
-                            />
-                            <motion.button
-                                onClick={() => removeBackground(c.id)}
-                                whileTap={{ scale: 0.9 }}
-                                className="text-red-500 hover:text-red-700 text-lg transition-colors"
-                                title="Remove"
-                            >
-                                &times;
-                            </motion.button>
-                        </div>
-                    ))}
-                    
+            {/* Background Swatches */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="block text-sm font-medium text-white/80">Background Swatches</label>
+                <span className="text-xs text-white/50">{backgrounds.length} colors</span>
+              </div>
+              
+              <div className="space-y-2 p-4 rounded-xl bg-white/5 border border-white/10">
+                {/* Quick Add */}
+                <div className="flex gap-2 pb-3 border-b border-white/10">
+                  <motion.button
+                    onClick={() => addBackground('#FFFFFF')}
+                    whileTap={{ scale: 0.95 }}
+                    className="flex-1 text-xs px-3 py-1.5 rounded-lg bg-white/10 text-white/70 hover:bg-white/20 transition-colors"
+                  >
+                    + White
+                  </motion.button>
+                  <motion.button
+                    onClick={() => addBackground(complementaryHex)}
+                    whileTap={{ scale: 0.95 }}
+                    className="flex-1 text-xs px-3 py-1.5 rounded-lg bg-white/10 text-white/70 hover:bg-white/20 transition-colors"
+                  >
+                    + Complementary
+                  </motion.button>
+                </div>
+
+                {backgrounds.map((c) => (
+                  <div key={c.id} className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      value={c.hex}
+                      onChange={(e) => updateBackground(c.id, e.target.value)}
+                      className="w-8 h-8 rounded-lg cursor-pointer border-0"
+                    />
+                    <input
+                      type="text"
+                      value={c.hex}
+                      onChange={(e) => updateBackground(c.id, e.target.value)}
+                      maxLength={7}
+                      className="flex-1 rounded-lg border border-white/20 bg-white/10 px-2 py-1.5 text-xs font-mono text-white backdrop-blur-md"
+                    />
                     <motion.button
-                        onClick={() => addBackground('#333333')}
-                        whileTap={{ scale: 0.95 }}
-                        className="w-full mt-3 py-2 bg-indigo-500 text-white font-semibold rounded-lg hover:bg-indigo-600 transition-colors shadow-md"
+                      onClick={() => removeBackground(c.id)}
+                      whileTap={{ scale: 0.9 }}
+                      className="text-white/50 hover:text-red-400 transition-colors"
                     >
-                        Add New Swatch
+                      <Trash2 className="h-4 w-4" />
                     </motion.button>
-                </div>
-            </div>
+                  </div>
+                ))}
 
-            {/* 2. Relativity Grid (Output) */}
-            <div className="lg:col-span-2 space-y-4">
-                <h2 className="text-xl font-semibold text-slate-700">Relativity Test Grid</h2>
-                
-                <div 
-                    className="grid gap-4 p-4 rounded-xl border border-slate-300 shadow-lg bg-slate-50/70"
-                    style={{
-                        gridTemplateColumns: `repeat(auto-fit, minmax(180px, 1fr))`,
-                    }}
+                <motion.button
+                  onClick={() => addBackground('#333333')}
+                  whileTap={{ scale: 0.95 }}
+                  className="w-full mt-3 flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 px-4 py-2 text-sm font-medium text-white"
                 >
-                    {backgrounds.map((bg) => (
-                        <div
-                            key={bg.id}
-                            style={{ backgroundColor: bg.hex }}
-                            className="h-48 rounded-xl shadow-xl border border-slate-400 flex flex-col items-center justify-center p-2 transition-colors duration-300"
-                        >
-                            {/* The Target Swatch - always the same color */}
-                            <div
-                                style={{ 
-                                    backgroundColor: targetHex,
-                                    width: centralSwatchSize,
-                                    height: centralSwatchSize,
-                                }}
-                                className="rounded-full shadow-2xl ring-4 ring-white/50 transition-colors duration-300"
-                                title={`Target Color: ${targetHex}`}
-                            />
-                            
-                            <p className="text-xs font-mono mt-3 p-1 rounded-md bg-white/70 backdrop-blur-sm shadow-inner text-slate-800">
-                                BG: {bg.hex}
-                            </p>
-                        </div>
-                    ))}
-                </div>
+                  <Plus className="h-4 w-4" />
+                  Add Swatch
+                </motion.button>
+              </div>
             </div>
-          </div>
-        </section>
-      </main>
-    </div>
+          </motion.div>
+
+          {/* Right Column - Grid */}
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.2 }}
+            className="lg:col-span-2 space-y-4"
+          >
+            <label className="block text-sm font-medium text-white/80">Relativity Test Grid</label>
+            <div 
+              className="grid gap-4 p-4 rounded-2xl border border-white/20 bg-white/5"
+              style={{
+                gridTemplateColumns: `repeat(auto-fit, minmax(160px, 1fr))`,
+              }}
+            >
+              {backgrounds.map((bg, i) => (
+                <motion.div
+                  key={bg.id}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.1 * i }}
+                  style={{ backgroundColor: bg.hex }}
+                  className="h-44 rounded-xl shadow-xl border border-white/30 flex flex-col items-center justify-center p-3"
+                >
+                  <div
+                    style={{ 
+                      backgroundColor: targetHex,
+                      width: '40%',
+                      height: '40%',
+                    }}
+                    className="rounded-full shadow-2xl ring-4 ring-white/30 transition-colors duration-300"
+                    title={`Target: ${targetHex}`}
+                  />
+                  <p className="mt-3 text-xs font-mono px-2 py-1 rounded-lg bg-white/70 backdrop-blur-sm text-slate-800">
+                    {bg.hex}
+                  </p>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
+        </div>
+      </div>
+    </ToolWrapper>
   )
 }

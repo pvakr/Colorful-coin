@@ -284,12 +284,6 @@ export default function LivingOrganismBrushPage() {
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
-            <Link href="/tools">
-              <Button variant="outline" size="sm">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Tools
-              </Button>
-            </Link>
             <div>
               <h1 className="text-2xl font-bold text-foreground">Living Organism Brush</h1>
               <p className="text-muted-foreground">Plant seeds that grow into organic fractal structures</p>

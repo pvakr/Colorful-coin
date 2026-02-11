@@ -6,56 +6,6 @@ import { BASE_COLORS } from "../components/colors";
 import ScoreBadge from "../components/ScoreBadge";
 
 /* ---------- Reusable Back Button (inline) ---------- */
-function BackButton({
-  label = "Back to Tools",
-  hrefFallback = "/tools",
-  className = "",
-}: { label?: string; hrefFallback?: string; className?: string }) {
-  const router = useRouter();
-  const pathname = usePathname();
-
-  const goBack = useCallback(() => {
-    if (typeof window === "undefined") return router.push(hrefFallback);
-
-    const ref = document.referrer;
-    const hasHistory = window.history.length > 1;
-
-    const sameOrigin = !!ref && (() => {
-      try { return new URL(ref).origin === window.location.origin; } catch { return false; }
-    })();
-
-    const notSelf = !!ref && (() => {
-      try { return new URL(ref).pathname !== pathname; } catch { return true; }
-    })();
-
-    if (hasHistory && sameOrigin && notSelf) {
-      router.back();
-    } else {
-      router.push(hrefFallback);
-    }
-  }, [router, hrefFallback, pathname]);
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") { e.preventDefault(); goBack(); }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [goBack]);
-
-  return (
-    <motion.button
-      onClick={goBack}
-      whileTap={{ scale: 0.97 }}
-      className={`inline-flex items-center gap-2 rounded-xl bg-white/90 px-4 py-2 text-slate-800 ring-1 ring-black/5 shadow hover:bg-white ${className}`}
-      aria-label="Go back"
-    >
-      <span className="text-lg">←</span>
-      <span className="font-semibold">{label}</span>
-    </motion.button>
-  );
-}
-
 export default function PaintPage() {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -172,7 +122,6 @@ export default function PaintPage() {
         <div className="mx-auto max-w-6xl space-y-6">
           {/* Back nav */}
           <div className="flex items-center justify-between">
-            <BackButton hrefFallback="/tools" label="Back to Tools" />
           </div>
 
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">

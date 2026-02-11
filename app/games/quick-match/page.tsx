@@ -2,10 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Timer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { randomColor } from "../lib/colors";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import GameWrapper from "@/components/GameWrapper";
+import { Timer, Trophy, Zap } from "lucide-react";
+import { motion } from "framer-motion";
 
 export default function QuickMatch() {
   const router = useRouter();
@@ -13,14 +15,13 @@ export default function QuickMatch() {
   const [left, setLeft] = useState("#ff0000");
   const [right, setRight] = useState("#00ff00");
   const [score, setScore] = useState(0);
-  const [time, setTime] = useState(0); // start with 0 (no timer until Start Game clicked)
+  const [time, setTime] = useState(0);
   const [started, setStarted] = useState(false);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [isResultOpen, setIsResultOpen] = useState(false);
 
   const difficulty = useMemo(() => Math.max(0.2, 1 - score * 0.03), [score]);
 
-  // Generate next color pair
   const nextPair = useCallback(() => {
     const a = randomColor();
     const same = Math.random() < 0.5;
@@ -48,26 +49,24 @@ export default function QuickMatch() {
     setRight(b);
   }, [difficulty]);
 
-  // Answer handler
   const answer = (y: boolean) => {
     const correct = (left === right) === y;
     setScore((s) => s + (correct ? 1 : -1));
     nextPair();
   };
 
-  // Timer effect
- useEffect(() => {
-  if (started && time > 0) {
-    tickRef.current = setInterval(() => setTime((t) => t - 1), 1000);
-  }
-
-  return () => {
-    if (tickRef.current) {
-      clearInterval(tickRef.current);
-      tickRef.current = null;
+  useEffect(() => {
+    if (started && time > 0) {
+      tickRef.current = setInterval(() => setTime((t) => t - 1), 1000);
     }
-  };
-}, [started, time]);
+
+    return () => {
+      if (tickRef.current) {
+        clearInterval(tickRef.current);
+        tickRef.current = null;
+      }
+    };
+  }, [started, time]);
 
   useEffect(() => {
     if (time <= 0 && tickRef.current) {
@@ -78,10 +77,6 @@ export default function QuickMatch() {
     }
   }, [time]);
 
-  const handleBack = () => {
-    router.push("/games");
-  };
-
   const startGame = () => {
     setScore(0);
     setTime(30);
@@ -90,68 +85,93 @@ export default function QuickMatch() {
   };
 
   return (
-    <div>
-      <div className="fixed top-6 left-6">
-        <Button variant="outline" size="sm" className="bg-transparent hover:bg-transparent border px-3" onClick={handleBack}>
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Games
-        </Button>
-      </div>
+    <GameWrapper
+      title="Quick Match"
+      description="Are the colors the same or different?"
+      stats={[
+        { label: "Score", value: score, icon: <Trophy className="w-4 h-4" /> },
+        { label: "Time", value: `${time}s`, icon: <Timer className="w-4 h-4" /> },
+      ]}
+    >
+      <div className="w-full max-w-3xl">
+        <div className="mt-6 grid grid-cols-2 gap-4">
+          <motion.div
+            className="aspect-square rounded-xl shadow-lg"
+            style={{ backgroundColor: left }}
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.3 }}
+          />
+          <motion.div
+            className="aspect-square rounded-xl shadow-lg"
+            style={{ backgroundColor: right }}
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.3, delay: 0.1 }}
+          />
+        </div>
 
-      <main className="min-h-screen flex flex-col items-center justify-center px-4 py-12">
-        <section className="w-full max-w-3xl">
-          <div className="flex flex-col items-center gap-3">
-            <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-center">Quick Match</h1>
-            <div className="flex items-center gap-3">
-              <span className="inline-flex items-center gap-2 text-xs sm:text-sm font-medium border rounded-full px-3 py-1">
-                <span>Score</span>
-                <span className="font-semibold">{score}</span>
-              </span>
-              <span className="inline-flex items-center gap-2 text-xs sm:text-sm font-medium border rounded-full px-3 py-1">
-                <Timer className="w-3.5 h-3.5" />
-                <span>{time}s</span>
-              </span>
-            </div>
-          </div>
-
-          <div className="mt-6 grid grid-cols-2 gap-4">
-            <div className="aspect-square rounded-xl border shadow-sm" style={{ backgroundColor: left }} />
-            <div className="aspect-square rounded-xl border shadow-sm" style={{ backgroundColor: right }} />
-          </div>
-
-          {started && time > 0 ? (
-            <div className="mt-8 flex gap-6 justify-center">
-              <Button onClick={() => answer(true)} className="bg-green-500 text-white text-xl px-10 py-4 rounded-xl hover:bg-green-600 transition">
+        {started && time > 0 ? (
+          <div className="mt-8 flex gap-6 justify-center">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <Button
+                onClick={() => answer(true)}
+                className="bg-green-500 text-white text-xl px-10 py-4 rounded-xl hover:bg-green-600 transition shadow-lg"
+              >
                 YES
               </Button>
-              <Button onClick={() => answer(false)} className="bg-red-500 text-white text-xl px-10 py-4 rounded-xl hover:bg-red-600 transition">
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: 0.1 }}
+            >
+              <Button
+                onClick={() => answer(false)}
+                className="bg-red-500 text-white text-xl px-10 py-4 rounded-xl hover:bg-red-600 transition shadow-lg"
+              >
                 NO
               </Button>
-            </div>
-          ) : (
-            <div className="mt-8 flex justify-center">
-              <Button onClick={startGame} className="bg-white text-black hover:bg-gray-200">
-                Start Game
-              </Button>
-            </div>
-          )}
+            </motion.div>
+          </div>
+        ) : (
+          <motion.div
+            className="mt-8 flex justify-center"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <Button
+              onClick={startGame}
+              className="bg-white text-black hover:bg-gray-200 shadow-lg"
+            >
+              <Zap className="w-5 h-5 mr-2" />
+              Start Game
+            </Button>
+          </motion.div>
+        )}
 
-          <Dialog open={isResultOpen} onOpenChange={setIsResultOpen}>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle className="text-2xl">Time Up</DialogTitle>
-                <DialogDescription>
-                  Final Score: <span className="font-semibold">{score}</span>
-                </DialogDescription>
-              </DialogHeader>
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={handleBack}>Back to Games</Button>
-                <Button onClick={startGame}>Next Round</Button>
-              </div>
-            </DialogContent>
-          </Dialog>
-        </section>
-      </main>
-    </div>
+        <Dialog open={isResultOpen} onOpenChange={setIsResultOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-2xl flex items-center gap-2">
+                <Timer className="w-6 h-6" />
+                Time Up
+              </DialogTitle>
+              <DialogDescription>
+                Final Score: <span className="font-semibold text-yellow-400">{score}</span>
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex justify-end gap-2">
+              <Button onClick={startGame}>Next Round</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </GameWrapper>
   );
 }

@@ -2,42 +2,19 @@
 
 import { useState, useCallback, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
-import { motion } from "framer-motion"
-import ColorThief from 'colorthief' 
+import { motion, AnimatePresence } from "framer-motion"
+import ColorThief from 'colorthief'
+import ToolWrapper from "@/components/ToolWrapper"
+import { Upload, Image as ImageIcon, PieChart, Copy, Check } from "lucide-react"
 
-// --- TYPE DEFINITIONS ---
-type RGB = [number, number, number];
+type RGB = [number, number, number]
 
-// Updated interface to highlight the 'percentage' field
 interface ColorSwatch {
-  hex: string;
-  rgb: RGB;
-  percentage: number; // This is the core focus of this tool
+  hex: string
+  rgb: RGB
+  percentage: number
 }
 
-// ---- Reusable Home Button (inline) ----
-function HomeButton({
-  label = "Back to Tools",
-  hrefFallback = "/tools",
-  className = "",
-}: { label?: string; hrefFallback?: string; className?: string }) {
-  const router = useRouter()
-  const goHome = useCallback(() => router.push(hrefFallback), [router, hrefFallback])
-
-  return (
-    <motion.button
-      onClick={goHome}
-      whileTap={{ scale: 0.97 }}
-      className={`inline-flex items-center gap-2 rounded-xl bg-slate-100 px-4 py-2 text-slate-800 ring-1 ring-slate-200 shadow-md hover:bg-slate-200 transition-colors ${className}`}
-      aria-label="Go to Tools"
-    >
-      <span className="text-lg">←</span>
-      <span className="font-semibold">{label}</span>
-    </motion.button>
-  )
-}
-
-// Helper function to convert RGB array to HEX string
 const rgbToHex = (rgb: RGB): string => {
   return '#' + rgb.map(x => {
     const hex = x.toString(16)
@@ -45,50 +22,37 @@ const rgbToHex = (rgb: RGB): string => {
   }).join('')
 }
 
-// --- DOMINANCE CALCULATION LOGIC ---
-// NOTE: ColorThief provides a palette sorted by dominance, but not the exact percentages.
-// To satisfy the 'percentage' requirement, we'll use a simplified weighted distribution 
-// based on their position in the array, simulating dominance.
 const calculateDominance = (rawPalette: number[][]): ColorSwatch[] => {
-  const numColors = rawPalette.length;
-  // Use weights (e.g., a simple linear decrease in dominance)
-  // Example: For 5 colors, weights could be [5, 4, 3, 2, 1]
-  const weights = Array.from({ length: numColors }, (_, i) => numColors - i);
-  const totalWeight = weights.reduce((a, b) => a + b, 0);
+  const numColors = rawPalette.length
+  const weights = Array.from({ length: numColors }, (_, i) => numColors - i)
+  const totalWeight = weights.reduce((a, b) => a + b, 0)
 
   return rawPalette.map((rgb, i) => {
-    const weight = weights[i];
-    // Calculate percentage based on the weight
-    const percentage = (weight / totalWeight) * 100;
+    const weight = weights[i]
+    const percentage = (weight / totalWeight) * 100
 
     return {
       rgb: rgb as RGB,
       hex: rgbToHex(rgb as RGB),
-      percentage: parseFloat(percentage.toFixed(1)), // Keep one decimal point
-    };
-  });
-};
-
+      percentage: parseFloat(percentage.toFixed(1)),
+    }
+  })
+}
 
 export default function ImageDominanceExtractor() {
+  const router = useRouter()
   const [imageUrl, setImageUrl] = useState<string | null>(null)
   const [colors, setColors] = useState<ColorSwatch[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
   const imageRef = useRef<HTMLImageElement>(null)
 
   const extractAndAnalyze = useCallback(async (img: HTMLImageElement) => {
     setIsLoading(true)
     const colorThief = new ColorThief()
-
-    // 1. Extract a simple palette (ColorThief's palette is ordered by perceived dominance)
-    const rawPalette = colorThief.getPalette(img, 5) // Extract 5 main colors
-
-    // 2. Format and calculate simulated dominance
+    const rawPalette = colorThief.getPalette(img, 5)
     const newColors = calculateDominance(rawPalette)
-
-    // Optional: Sort the new palette by dominance descending
-    newColors.sort((a, b) => b.percentage - a.percentage);
-
+    newColors.sort((a, b) => b.percentage - a.percentage)
     setColors(newColors)
     setIsLoading(false)
   }, [])
@@ -99,150 +63,177 @@ export default function ImageDominanceExtractor() {
       const reader = new FileReader()
       reader.onload = (event) => {
         setImageUrl(event.target?.result as string)
-        setColors([]);
+        setColors([])
       }
       reader.readAsDataURL(file)
     }
   }, [])
-  
-  // Effect to trigger analysis once the image is loaded
+
   useEffect(() => {
-    const currentImage = imageRef.current;
+    const currentImage = imageRef.current
     if (currentImage && imageUrl) {
       if (currentImage.complete) {
-        extractAndAnalyze(currentImage);
+        extractAndAnalyze(currentImage)
       } else {
-        currentImage.onload = () => extractAndAnalyze(currentImage);
-        return () => {
-            currentImage.onload = null;
-        }
+        currentImage.onload = () => extractAndAnalyze(currentImage)
+        return () => { currentImage.onload = null }
       }
     }
-  }, [imageUrl, extractAndAnalyze]);
+  }, [imageUrl, extractAndAnalyze])
 
-  // Render the dominance breakdown using a simple bar chart metaphor
-  const DominanceBreakdown = () => (
-    <div className="mt-4 space-y-3 p-4 bg-white/80 rounded-xl shadow-md border border-slate-200">
-      <h3 className="text-lg font-bold text-slate-700">Color Dominance Ratio</h3>
-      <div className="flex w-full overflow-hidden rounded-lg shadow-inner border border-slate-300">
-        {colors.map((c, i) => (
-          <div
-            key={i}
-            style={{ 
-              backgroundColor: c.hex, 
-              width: `${c.percentage}%` 
-            }}
-            // Hide small segments' labels to avoid clutter
-            className={`h-6 transition-all duration-300 flex items-center justify-center text-xs font-semibold ${c.percentage > 15 ? 'text-white' : 'text-slate-800'}`}
-          >
-            {c.percentage > 5 && `${c.percentage}%`}
-          </div>
-        ))}
-      </div>
-      
-      <div className="space-y-2">
-        {colors.map((c, i) => (
-            <div key={i} className="flex justify-between items-center text-sm">
-                <div className="flex items-center gap-2 font-medium text-slate-700">
-                    <div style={{ backgroundColor: c.hex }} className="w-3 h-3 rounded-full border border-slate-300"/>
-                    {c.hex.toUpperCase()}
-                </div>
-                <span className="font-mono text-indigo-700 font-bold">{c.percentage}%</span>
-            </div>
-        ))}
-      </div>
-    </div>
-  );
-
+  const copyToClipboard = async (hex: string, index: number) => {
+    await navigator.clipboard.writeText(hex)
+    setCopiedIndex(index)
+    setTimeout(() => setCopiedIndex(null), 2000)
+  }
 
   return (
-    <div className="min-h-screen"> 
-      <main className="p-6">
-        <section 
-          className="mx-auto max-w-4xl rounded-3xl bg-white/70 backdrop-blur-md p-8 shadow-2xl ring-1 ring-white/50"
-        >
-          
-          {/* Home navigation */}
-          <div className="mb-6">
-            <HomeButton />
-          </div>
+    <ToolWrapper
+      title="Image Dominance Extractor"
+      description="Extract dominant colors from images with percentage breakdown"
+      icon={<PieChart className="h-6 w-6 text-white" />}
+    >
+      <div className="p-6">
+        <div className="grid lg:grid-cols-3 gap-8">
+          {/* Left Column - Image Upload */}
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.1 }}
+            className="space-y-6"
+          >
+            <div className="space-y-3">
+              <label className="block text-sm font-medium text-white/80">Upload Image</label>
+              <label className="flex flex-col items-center justify-center w-full h-48 rounded-2xl border-2 border-dashed border-white/20 bg-white/5 cursor-pointer hover:bg-white/10 transition-colors">
+                <Upload className="w-10 h-10 text-white/40 mb-2" />
+                <span className="text-sm text-white/60">Click to upload image</span>
+                <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+              </label>
+            </div>
 
-          <h1 className="text-3xl font-extrabold text-slate-800 mb-2 flex items-center gap-3">
-            <span role="img" aria-label="color percentage">📊</span>
-            Image Dominance Extractor
-          </h1>
-          <p className="text-slate-600 mb-6">Analyze an image to extract the primary color palette and reveal the visual dominance (percentage) of each color.</p>
-          
-          <div className="grid gap-8 lg:grid-cols-2">
-            
-            {/* 1. Input/Image Display */}
-            <div className="space-y-4">
-                <h2 className="text-xl font-semibold text-slate-700">Reference Image</h2>
-                
-                <label className="block text-sm font-medium text-slate-700">
-                    Upload Image
-                </label>
-                <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    className="block w-full text-sm text-slate-600 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 transition-colors"
+            <div className="aspect-square rounded-2xl overflow-hidden border border-white/20 bg-white/5">
+              {imageUrl ? (
+                <img
+                  ref={imageRef}
+                  src={imageUrl}
+                  alt="Uploaded"
+                  crossOrigin="anonymous"
+                  className="w-full h-full object-cover"
                 />
-
-                <div className="w-full aspect-video border border-slate-300 rounded-xl overflow-hidden bg-white/80 flex items-center justify-center shadow-inner">
-                    {imageUrl ? (
-                        <img 
-                            ref={imageRef} 
-                            src={imageUrl} 
-                            alt="Uploaded reference" 
-                            crossOrigin="anonymous" 
-                            className="w-full h-full object-cover"
-                        />
-                    ) : (
-                        <span className="text-slate-500 text-center p-4">Upload an image to start analysis.</span>
-                    )}
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full text-white/40">
+                  <ImageIcon className="w-16 h-16 mb-2" />
+                  <span className="text-sm">No image uploaded</span>
                 </div>
+              )}
             </div>
+          </motion.div>
 
-            {/* 2. Dominance Results */}
-            <div className="space-y-6">
-                
-                <h2 className="text-xl font-semibold text-slate-700">Dominance Analysis</h2>
+          {/* Right Column - Results */}
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.2 }}
+            className="lg:col-span-2 space-y-6"
+          >
+            <AnimatePresence mode="wait">
+              {isLoading ? (
+                <motion.div
+                  key="loading"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="flex flex-col items-center justify-center h-64 rounded-2xl bg-white/5"
+                >
+                  <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}>
+                    <PieChart className="h-12 w-12 text-amber-400" />
+                  </motion.div>
+                  <p className="mt-4 text-white/60">Extracting colors...</p>
+                </motion.div>
+              ) : colors.length > 0 ? (
+                <motion.div
+                  key="results"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="space-y-6"
+                >
+                  {/* Dominance Chart */}
+                  <div className="space-y-3">
+                    <label className="block text-sm font-medium text-white/80">Color Dominance</label>
+                    <div className="h-12 rounded-xl overflow-hidden flex shadow-lg">
+                      {colors.map((c, i) => (
+                        <motion.div
+                          key={i}
+                          initial={{ width: 0 }}
+                          animate={{ width: `${c.percentage}%` }}
+                          transition={{ delay: 0.1 * i, duration: 0.5 }}
+                          style={{ backgroundColor: c.hex }}
+                          className="h-full"
+                        />
+                      ))}
+                    </div>
+                  </div>
 
-                {isLoading && (
-                    <div className="text-center p-8 bg-indigo-50/20 rounded-xl shadow-md border border-indigo-100">
-                        <motion.div 
-                            animate={{ rotate: 360 }} 
-                            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                            className="text-3xl mx-auto w-fit text-indigo-500"
+                  {/* Color Cards */}
+                  <div className="space-y-3">
+                    <label className="block text-sm font-medium text-white/80">Extracted Colors</label>
+                    <div className="space-y-3">
+                      {colors.map((c, i) => (
+                        <motion.div
+                          key={i}
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: 0.1 * i }}
+                          className="flex items-center gap-4 p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors"
                         >
-                            🔄
+                          <div
+                            style={{ backgroundColor: c.hex }}
+                            className="w-16 h-16 rounded-xl shadow-lg"
+                          />
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <p className="text-lg font-mono font-bold text-white">{c.hex.toUpperCase()}</p>
+                              <motion.button
+                                onClick={() => copyToClipboard(c.hex, i)}
+                                whileTap={{ scale: 0.95 }}
+                                className="p-1.5 rounded-lg bg-white/10 text-white/50 hover:text-white transition-colors"
+                              >
+                                {copiedIndex === i ? <Check className="h-4 w-4 text-green-400" /> : <Copy className="h-4 w-4" />}
+                              </motion.button>
+                            </div>
+                            <div className="mt-1 flex items-center gap-2">
+                              <div className="flex-1 h-2 rounded-full bg-white/10 overflow-hidden">
+                                <motion.div
+                                  initial={{ width: 0 }}
+                                  animate={{ width: `${c.percentage}%` }}
+                                  transition={{ delay: 0.3, duration: 0.5 }}
+                                  style={{ backgroundColor: c.hex }}
+                                  className="h-full"
+                                />
+                              </div>
+                              <span className="text-sm text-white/60">{c.percentage}%</span>
+                            </div>
+                          </div>
                         </motion.div>
-                        <p className="text-indigo-600 font-semibold mt-2">Quantifying Color Ratios...</p>
+                      ))}
                     </div>
-                )}
-                
-                {!isLoading && colors.length > 0 && (
-                    <DominanceBreakdown />
-                )}
-
-                {!isLoading && colors.length === 0 && imageUrl && (
-                     <div className="p-4 bg-slate-100/70 rounded-xl border border-slate-200 text-slate-600">
-                        <p>Upload an image to see the exact color ratios that define its visual impact.</p>
-                    </div>
-                )}
-                
-                {!isLoading && !imageUrl && (
-                    <div className="p-4 bg-slate-100/70 rounded-xl border border-slate-200 text-slate-600">
-                        <p>A color ratio analysis helps you understand why an image feels balanced or dramatic.</p>
-                        <p className="mt-2 text-sm text-slate-500">Upload a photo to see the breakdown.</p>
-                    </div>
-                )}
-            </div>
-
-          </div>
-        </section>
-      </main>
-    </div>
+                  </div>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="empty"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="flex flex-col items-center justify-center h-64 rounded-2xl bg-white/5 text-white/40"
+                >
+                  <PieChart className="w-16 h-16 mb-4" />
+                  <p>Upload an image to extract dominant colors</p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
+        </div>
+      </div>
+    </ToolWrapper>
   )
 }

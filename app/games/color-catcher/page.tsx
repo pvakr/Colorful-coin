@@ -3,10 +3,11 @@ import { useEffect, useState, useRef } from "react"
 import { motion } from "framer-motion"
 import "../../globals.css"
 import { useRouter } from "next/navigation"
-import { ArrowLeft } from "lucide-react"
+import GameWrapper from "@/components/GameWrapper"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useToast } from "@/components/ui/use-toast"
+import { Trophy, Target, Zap, Crosshair } from "lucide-react"
 
 const FIXED_COLOR = "#FF6C00"
 const CONTAINER_WIDTH = 600
@@ -25,7 +26,6 @@ type Ball = { id: number; color: string; x: number; y: number }
 type Bullet = { id: number; x: number; y: number }
 
 export default function ColorCatcher() {
-  const router = useRouter()
   const [balls, setBalls] = useState<Ball[]>([])
   const [bullets, setBullets] = useState<Bullet[]>([])
   const [playerX, setPlayerX] = useState((CONTAINER_WIDTH - PLAYER_SIZE) / 2)
@@ -189,10 +189,6 @@ export default function ColorCatcher() {
   }, [])
 
   // --- Navigation & Game Control ---
-  const handleBack = () => {
-    router.push("/games")
-  }
-
   const handleRestart = () => {
     setGameOver(false)
     setBalls([])
@@ -204,54 +200,36 @@ export default function ColorCatcher() {
   }
 
   return (
-    <div>
-      {/* Back button */}
-      <div className="fixed top-6 left-6 z-10">
-        <Button
-          variant="outline"
-          size="sm"
-          className="bg-transparent hover:bg-transparent border px-3"
-          onClick={handleBack}
+    <GameWrapper
+      title="Color Catcher"
+      description="Catch the falling balls with the matching color!"
+      stats={[
+        { label: "Score", value: score, icon: <Trophy className="w-4 h-4" /> },
+        { label: "Streak", value: streak, icon: <Zap className="w-4 h-4" /> },
+      ]}
+    >
+      <div className="w-full max-w-4xl">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
         >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Games
-        </Button>
-      </div>
-
-      <main className="min-h-screen flex flex-col items-center justify-center px-4 py-12">
-        <section className="w-full max-w-4xl">
-          <div className="flex flex-col items-center gap-3">
-            <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-center">Color Catcher</h1>
-            <div className="flex items-center gap-3">
-              <span className="inline-flex items-center gap-2 text-xs sm:text-sm font-medium border rounded-full px-3 py-1">
-                <span>Score</span>
-                <span className="font-semibold">{score}</span>
-              </span>
-              <span className="inline-flex items-center gap-2 text-xs sm:text-sm font-medium border rounded-full px-3 py-1">
-                <span>Streak</span>
-                <span className="font-semibold">{streak}</span>
-              </span>
-              <span className="inline-flex items-center gap-2 text-xs sm:text-sm font-medium border rounded-full px-3 py-1">
-                <span>Target</span>
-                <span
-                  aria-label="target color"
-                  className="inline-block w-4 h-4 rounded-full border"
-                  style={{ backgroundColor: FIXED_COLOR }}
-                />
-              </span>
-            </div>
-          </div>
-
           {/* Game Container */}
           <div
-            className="mt-6 mx-auto relative overflow-hidden border-4 border-white shadow-xl"
+            className="mx-auto relative overflow-hidden border-4 border-white/20 rounded-xl shadow-2xl"
             style={{ width: CONTAINER_WIDTH, height: CONTAINER_HEIGHT, backgroundColor: "#1F1B3A" }}
-            tabIndex={0} // Ensure div can receive focus for input testing if necessary
+            tabIndex={0}
           >
             {/* Countdown Overlay */}
             {countdown !== null && (
               <div className="absolute inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm z-20">
-                <div className="text-6xl sm:text-7xl font-extrabold text-white">{countdown}</div>
+                <motion.div
+                  initial={{ scale: 0.5, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  className="text-6xl sm:text-7xl font-extrabold text-white"
+                >
+                  {countdown}
+                </motion.div>
               </div>
             )}
             
@@ -259,7 +237,7 @@ export default function ColorCatcher() {
             {balls.map((b) => (
               <motion.div
                 key={b.id}
-                className="absolute rounded-full"
+                className="absolute rounded-full shadow-lg"
                 style={{ width: BALL_SIZE, height: BALL_SIZE, backgroundColor: b.color, left: b.x, top: b.y }}
                 animate={{ top: b.y }}
                 transition={{ duration: FALL_INTERVAL / 1000 }}
@@ -270,7 +248,7 @@ export default function ColorCatcher() {
             {bullets.map((b) => (
               <motion.div
                 key={b.id}
-                className="absolute bg-white rounded-full"
+                className="absolute bg-white rounded-full shadow-md"
                 style={{ width: BULLET_SIZE, height: BULLET_SIZE, left: b.x, top: b.y }}
                 animate={{ top: b.y }}
                 transition={{ duration: BULLET_INTERVAL / 1000 }}
@@ -279,7 +257,7 @@ export default function ColorCatcher() {
 
             {/* Player (Cannon) */}
             <motion.div
-              className="absolute rounded-full border-4 border-white"
+              className="absolute rounded-full border-4 border-white shadow-lg"
               style={{
                 width: PLAYER_SIZE,
                 height: PLAYER_SIZE,
@@ -288,36 +266,33 @@ export default function ColorCatcher() {
                 left: playerX,
               }}
               animate={{ left: playerX }}
-              transition={{ left: { duration: 0.1 } }} // Slightly faster transition for better feel
+              transition={{ left: { duration: 0.1 } }}
             />
           </div>
 
-          <p className="mt-4 text-center text-base sm:text-lg">
-            Use
-            <span className="mx-1 inline-block border rounded px-1.5 py-0.5 text-sm">←</span>
-            <span className="mx-1 inline-block border rounded px-1.5 py-0.5 text-sm">→</span>
-            to move,
-            <span className="mx-1 inline-block border rounded px-1.5 py-0.5 text-sm">Space</span>
-            to shoot
-          </p>
+          <div className="mt-4 flex items-center justify-center gap-2 p-3 bg-white/10 backdrop-blur rounded-xl border border-white/20">
+            <Crosshair className="w-4 h-4 text-white/70" />
+            <p className="text-sm text-white/80">
+              Use <span className="font-semibold mx-1">←</span> <span className="font-semibold mx-1">→</span> to move, <span className="font-semibold mx-1">Space</span> to shoot
+            </p>
+          </div>
+        </motion.div>
 
-          {/* Game Over Dialog */}
-          <Dialog open={gameOver}>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle className="text-2xl">Game Over</DialogTitle>
-                <DialogDescription>
-                  Your final score: <span className="font-semibold">{score}</span>
-                </DialogDescription>
-              </DialogHeader>
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={handleBack}>Back to Games</Button>
-                <Button onClick={handleRestart}>Restart</Button>
-              </div>
-            </DialogContent>
-          </Dialog>
-        </section>
-      </main>
-    </div>
-  )
+        {/* Game Over Dialog */}
+        <Dialog open={gameOver}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-2xl">Game Over</DialogTitle>
+              <DialogDescription>
+                Your final score: <span className="font-semibold">{score}</span>
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex justify-end gap-2">
+              <Button onClick={handleRestart}>Restart</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </GameWrapper>
+  );
 }

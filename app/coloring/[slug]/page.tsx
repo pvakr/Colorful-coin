@@ -21,9 +21,6 @@ export default function CategoryPage({ params }: { params: { slug: string } }) {
   return (
     <div className="min-h-screen p-6">
       <div className="mx-auto max-w-6xl">
-        <div className="mb-4 text-sm text-gray-600">
-          <Link href="/coloring" className="underline hover:opacity-80">← Back</Link>
-        </div>
         <div className="flex items-center justify-between gap-4 mb-6">
           <h1 className="text-2xl md:text-3xl font-bold">{title}</h1>
           <span className="text-sm text-gray-500">{files.length} pages</span>

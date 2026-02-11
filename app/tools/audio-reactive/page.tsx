@@ -6,7 +6,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Slider } from "@/components/ui/slider"
-import { ArrowLeft, RotateCcw, Mic, MicOff } from "lucide-react"
+import { Volume2, RotateCcw, Mic, MicOff, Palette, ArrowLeft } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 interface AudioData {
@@ -368,12 +368,6 @@ export default function AudioReactivePage() {
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
-            <Link href="/tools">
-              <Button variant="outline" size="sm">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Tools
-              </Button>
-            </Link>
             <div>
               <h1 className="text-2xl font-bold text-foreground">Audio-Reactive Painting</h1>
               <p className="text-muted-foreground">

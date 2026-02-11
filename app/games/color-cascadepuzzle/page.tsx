@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
-import { LucideDroplet, LucideZap, LucideRedo, LucideArrowLeft } from "lucide-react"
+import { LucideDroplet, LucideZap, LucideRedo, LucideArrowLeft, Trophy, Target, Zap } from "lucide-react"
+import GameWrapper from "@/components/GameWrapper";
 
 // --- 1. CONFIGURATION AND TYPES ---
 
@@ -486,29 +487,17 @@ export default function ColorCascadePuzzle() {
     )
   }
 
+  const stats = [
+    { label: "Score", value: state.score, icon: <Trophy className="w-4 h-4" /> },
+    { label: "Level", value: state.level, icon: <Target className="w-4 h-4" /> },
+  ];
+
   return (
-    <div
-      className="min-h-screen text-white flex flex-col items-center p-4"
-      style={{
-        background:
-          "radial-gradient(circle at top left, #f97373, transparent 55%), radial-gradient(circle at bottom right, #22c1c3, #111827)",
-      }}
+    <GameWrapper
+      title="Color Cascade Puzzle"
+      description="Stack blocks and clear lines"
+      stats={stats}
     >
-      {/* Back Button */}
-      <div className="fixed top-6 left-6">
-        <button
-          onClick={handleBack}
-          className="flex items-center gap-2 text-sm font-medium border border-teal-300 rounded-full px-3 py-1 bg-black/40 backdrop-blur hover:bg-black/70 transition text-teal-100"
-        >
-          <LucideArrowLeft className="w-4 h-4" />
-          Back to Games
-        </button>
-      </div>
-
-      <h1 className="text-4xl font-extrabold mb-8 text-teal-300 mt-16 drop-shadow-lg">
-        Color Cascade Puzzle
-      </h1>
-
       <div className="flex space-x-8 items-start">
         {/* Score Panel */}
         <div className="w-56 p-4 bg-black/60 rounded-2xl shadow-2xl border border-teal-400 text-slate-100 backdrop-blur">
@@ -584,6 +573,6 @@ export default function ColorCascadePuzzle() {
           )}
         </div>
       </div>
-    </div>
+    </GameWrapper>
   )
 }

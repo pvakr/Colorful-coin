@@ -2,9 +2,11 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, CheckCircle, XCircle } from "lucide-react"
+import GameWrapper from "@/components/GameWrapper"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { motion } from "framer-motion"
+import { CheckCircle, XCircle, Trophy, Calculator } from "lucide-react"
 
 type RGB = [number, number, number]
 
@@ -84,102 +86,93 @@ export default function ColorArithmetic() {
   }
 
   const handleBack = () => {
-    router.push("/games") // ✅ Navigate back to /games
+    router.push("/games")
   }
 
   return (
-    <div>
-      {/* Back button - no background colors added */}
-      <div className="fixed top-6 left-6">
-        <Button
-          variant="outline"
-          size="sm"
-          className="bg-transparent hover:bg-transparent border px-3"
-          onClick={handleBack}
+    <GameWrapper
+      title="Color Arithmetic"
+      description="What color do you get when you blend these two?"
+      stats={[
+        { label: "Score", value: score, icon: <Trophy className="w-4 h-4" /> },
+      ]}
+    >
+      <div className="w-full max-w-2xl">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
         >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Games
-        </Button>
-      </div>
-
-      <main className="min-h-screen flex flex-col items-center justify-center px-4 py-12">
-        <section className="w-full max-w-3xl">
-          <div className="flex flex-col items-center gap-2">
-            <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-center">Color Arithmetic</h1>
-            <span className="inline-flex items-center gap-2 text-xs sm:text-sm font-medium border rounded-full px-3 py-1">
-              <span>Score</span>
-              <span className="font-semibold">{score}</span>
-            </span>
-          </div>
-
-          <p className="mt-6 text-xl sm:text-2xl font-semibold text-center">What does this blend into?</p>
+          <p className="text-xl sm:text-2xl font-semibold text-center mb-6">What does this blend into?</p>
 
           {/* Problem row */}
-          <div className="mt-6 flex items-center justify-center gap-3 sm:gap-4">
-            <div
-              aria-label="left color"
-              className="w-16 h-16 sm:w-20 sm:h-20 rounded-md border"
+          <div className="flex items-center justify-center gap-3 sm:gap-4 mb-8">
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl border-2 border-white/30 shadow-lg"
               style={{ backgroundColor: rgbToStr(leftColor) }}
             />
             <span className="text-2xl sm:text-3xl font-bold">+</span>
-            <div
-              aria-label="right color"
-              className="w-16 h-16 sm:w-20 sm:h-20 rounded-md border"
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl border-2 border-white/30 shadow-lg"
               style={{ backgroundColor: rgbToStr(rightColor) }}
             />
             <span className="text-2xl sm:text-3xl font-bold">=</span>
-            <div
-              aria-hidden
-              className="w-16 h-16 sm:w-20 sm:h-20 rounded-md border border-dashed"
-            />
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl border-2 border-white/20 border-dashed bg-white/5" />
           </div>
 
           {/* Options grid */}
-          <div className="mt-8 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
             {options.map((opt, idx) => (
-              <button
+              <motion.button
                 key={idx}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
                 onClick={() => handleClick(opt)}
                 aria-label={`option ${idx + 1}`}
-                className="group relative aspect-square w-full rounded-md border transition-transform focus:outline-none focus:ring-2 focus:ring-offset-2 hover:scale-[1.03]"
+                className="aspect-square w-full rounded-xl border-2 border-white/20 shadow-lg hover:shadow-xl transition-shadow"
                 style={{ backgroundColor: rgbToStr(opt) }}
-              >
-                <span className="sr-only">Choose color option {idx + 1}</span>
-              </button>
+              />
             ))}
           </div>
+        </motion.div>
 
-          <Dialog open={isFeedbackOpen} onOpenChange={setIsFeedbackOpen}>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2 text-2xl">
-                  {feedback === "Correct!" ? (
-                    <CheckCircle className="w-6 h-6" />
-                  ) : (
-                    <XCircle className="w-6 h-6" />
-                  )}
-                  {feedback}
-                </DialogTitle>
-                <DialogDescription>
-                  {feedback === "Correct!"
-                    ? "Nice! That’s the right blend."
-                    : "Not quite. Try the next one!"}
-                </DialogDescription>
-              </DialogHeader>
-              <div className="flex justify-end">
-                <Button
-                  onClick={() => {
-                    setIsFeedbackOpen(false)
-                    generateRound()
-                  }}
-                >
-                  Next
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
-        </section>
-      </main>
-    </div>
+        <Dialog open={isFeedbackOpen} onOpenChange={setIsFeedbackOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-2xl">
+                {feedback === "Correct!" ? (
+                  <>
+                    <CheckCircle className="w-6 h-6 text-green-500" />
+                    Correct!
+                  </>
+                ) : (
+                  <>
+                    <XCircle className="w-6 h-6 text-red-500" />
+                    Wrong!
+                  </>
+                )}
+              </DialogTitle>
+              <DialogDescription>
+                {feedback === "Correct!"
+                  ? "Nice! That's the right blend."
+                  : "Not quite. Try the next one!"}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex justify-end">
+              <Button
+                onClick={() => {
+                  setIsFeedbackOpen(false)
+                  generateRound()
+                }}
+              >
+                Next
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </GameWrapper>
   )
 }

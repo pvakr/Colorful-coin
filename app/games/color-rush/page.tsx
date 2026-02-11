@@ -2,14 +2,15 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Timer } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import GameWrapper from "@/components/GameWrapper"
+import { Timer, Trophy, Zap } from "lucide-react"
+import { motion } from "framer-motion"
 
 const COLORS = ["red", "blue", "green", "yellow", "purple"]
 const TILE_COUNT = 25
-// Increase the round time slightly for better initial play experience
-const ROUND_TIME = 8000 
+const ROUND_TIME = 8000
 
 export default function ColorRushGame() {
   const router = useRouter()
@@ -18,14 +19,11 @@ export default function ColorRushGame() {
   const [targetColor, setTargetColor] = useState("")
   const [score, setScore] = useState(0)
   const [message, setMessage] = useState("")
-  // Removed "roundOver" state, now directly uses "gameOver"
-  const [gameState, setGameState] = useState<"intro" | "playing" | "gameOver">("intro") 
+  const [gameState, setGameState] = useState<"intro" | "playing" | "gameOver">("intro")
   const [roundKey, setRoundKey] = useState(0)
   const [isStartOpen, setIsStartOpen] = useState(true)
-  // Removed [countdown] state
   const [timeLeft, setTimeLeft] = useState<number>(Math.floor(ROUND_TIME / 1000))
-  // Renamed to reflect final game over
-  const [isGameOverOpen, setIsGameOverOpen] = useState(false) 
+  const [isGameOverOpen, setIsGameOverOpen] = useState(false)
   const [roundClicks, setRoundClicks] = useState(0)
   const [finalScore, setFinalScore] = useState(0)
 
@@ -46,18 +44,17 @@ export default function ColorRushGame() {
     }
   }
 
-  // time left during round - modified for Game Over logic
   useEffect(() => {
     if (gameState !== "playing") return
-    
+
     if (timeLeft <= 0) {
       setMessage("Time's up! Game Over.")
       setGameState("gameOver")
-      setFinalScore(score) // Capture final score
-      setIsGameOverOpen(true) // Open the Game Over dialog
+      setFinalScore(score)
+      setIsGameOverOpen(true)
       return
     }
-    
+
     const t = setTimeout(() => setTimeLeft((t) => t - 1), 1000)
     return () => clearTimeout(t)
   }, [gameState, timeLeft, score])
@@ -69,17 +66,15 @@ export default function ColorRushGame() {
       setScore((s) => s + 1)
       setMessage("✅ Nice!")
       setRoundClicks((c) => c + 1)
-      // Check if all target tiles have been clicked (simple check based on count vs tiles)
-      const targetCount = tiles.filter(c => c === targetColor).length;
+      const targetCount = tiles.filter(c => c === targetColor).length
       if (roundClicks + 1 >= targetCount) {
-        // Automatically start the next round if all are clicked
-        setTimeout(() => startRound(false), 500); 
+        setTimeout(() => startRound(false), 500)
       }
     } else {
       setMessage("❌ Wrong! Game Over.")
       setGameState("gameOver")
-      setFinalScore(score) // Capture final score
-      setIsGameOverOpen(true) // Open the Game Over dialog
+      setFinalScore(score)
+      setIsGameOverOpen(true)
     }
   }
 
@@ -92,13 +87,9 @@ export default function ColorRushGame() {
       purple: "bg-purple-500",
     })[color]
 
-  const handleBack = () => {
-    router.push("/games")
-  }
-
   const handleRestart = () => {
     setIsGameOverOpen(false)
-    setIsStartOpen(true) // Go back to the intro dialog to start afresh
+    setIsStartOpen(true)
     setScore(0)
     setFinalScore(0)
     setGameState("intro")
@@ -107,89 +98,75 @@ export default function ColorRushGame() {
   }
 
   return (
-    <div>
-      <div className="fixed top-6 left-6 z-10">
-        <Button variant="outline" size="sm" className="bg-transparent hover:bg-transparent border px-3" onClick={handleBack}>
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Games
-        </Button>
-      </div>
-    <main className="min-h-screen flex flex-col items-center justify-center px-4 py-12">
-      <section className="w-full max-w-3xl">
-        <div className="flex flex-col items-center gap-3">
-          <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-center">Color Rush Reaction</h1>
-          <span className="inline-flex items-center gap-2 text-xs sm:text-sm font-medium border rounded-full px-3 py-1">
-            <span>Score</span>
-            <span className="font-semibold">{score}</span>
-          </span>
-          {gameState === "playing" && (
-            <span className="inline-flex items-center gap-2 text-xs sm:text-sm font-medium border rounded-full px-3 py-1">
-              <Timer className="w-3.5 h-3.5" />
-              <span>{timeLeft}s</span>
-            </span>
-          )}
-        </div>
-
+    <GameWrapper
+      title="Color Rush"
+      description="Click all the target color tiles before time runs out!"
+      stats={[
+        { label: "Score", value: score, icon: <Trophy className="w-4 h-4" /> },
+        { label: "Time", value: `${timeLeft}s`, icon: <Timer className="w-4 h-4" /> },
+      ]}
+    >
+      <div className="w-full max-w-3xl">
         {gameState === "playing" && (
-          <p className="mt-6 text-xl sm:text-2xl font-semibold text-center">
-            Click all <strong>{targetColor.toUpperCase()}</strong> tiles!
+          <p className="mt-6 text-xl sm:text-2xl font-semibold text-center text-white">
+            Click all <strong className="text-yellow-400">{targetColor.toUpperCase()}</strong> tiles!
           </p>
         )}
 
         {gameState !== "playing" && message && (
-          <p className="mt-6 text-lg font-semibold text-center">{message}</p>
+          <p className="mt-6 text-lg font-semibold text-center text-white">{message}</p>
         )}
 
         <div className="grid grid-cols-5 gap-2 my-6">
           {tiles.map((color, idx) => (
-            <button
+            <motion.button
               key={idx}
               onClick={() => handleClick(color)}
               disabled={gameState !== "playing"}
-              className={`w-14 h-14 ${getBg(color)} rounded shadow-lg transition-transform hover:scale-105 active:scale-95`}
+              className={`w-14 h-14 ${getBg(color)} rounded-lg shadow-lg transition-transform hover:scale-105 active:scale-95`}
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.3, delay: idx * 0.02 }}
+              whileHover={{ scale: gameState === "playing" ? 1.1 : 1 }}
             />
           ))}
         </div>
 
-        {/* Start dialog (intro) - removed countdown trigger */}
         <Dialog open={isStartOpen} onOpenChange={setIsStartOpen}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle className="text-2xl">Color Rush</DialogTitle>
+              <DialogTitle className="text-2xl flex items-center gap-2">
+                <Zap className="w-6 h-6 text-yellow-500" />
+                Color Rush
+              </DialogTitle>
               <DialogDescription>
-                Click start to begin. Click all the tiles of the target color before time runs out. 
-                <br />**One wrong click or running out of time ends the game!**
+                Click all the tiles of the target color before time runs out.
+                <br />
+                <strong className="text-red-500">One wrong click or running out of time ends the game!</strong>
               </DialogDescription>
             </DialogHeader>
             <div className="flex justify-end">
-              <Button onClick={() => { setIsStartOpen(false); startRound(true); }}>
+              <Button onClick={() => { setIsStartOpen(false); startRound(true) }}>
                 Start Game
               </Button>
             </div>
           </DialogContent>
         </Dialog>
 
-        {/* Removed Countdown overlay */}
-
-        {/* Game Over dialog - formerly Result dialog */}
         <Dialog open={isGameOverOpen} onOpenChange={setIsGameOverOpen}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle className="text-2xl">Game Over!</DialogTitle>
+              <DialogTitle className="text-2xl text-red-500">Game Over!</DialogTitle>
               <DialogDescription>
-                Your Final Score: <span className="font-bold text-lg text-red-600">{finalScore}</span>
+                Your Final Score: <span className="font-bold text-lg text-yellow-400">{finalScore}</span>
               </DialogDescription>
             </DialogHeader>
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={handleBack}>Back to Games</Button>
-              <Button onClick={handleRestart}>
-                Restart Game
-              </Button>
+              <Button onClick={handleRestart}>Restart Game</Button>
             </div>
           </DialogContent>
         </Dialog>
-      </section>
-    </main>
-    </div>
+      </div>
+    </GameWrapper>
   )
-}
+

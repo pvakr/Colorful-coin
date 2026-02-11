@@ -1,61 +1,13 @@
 "use client"
 
-import { useMemo, useRef, useState, useCallback, useEffect } from "react"
-import { useRouter, usePathname } from "next/navigation"
+import { useMemo, useRef, useState } from "react"
+import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
-
-// ---- Reusable Back Button (inline) ----
-function BackButton({
-  label = "Back to Tools",
-  hrefFallback = "/tools",
-  className = "",
-}: { label?: string; hrefFallback?: string; className?: string }) {
-  const router = useRouter()
-  const pathname = usePathname()
-
-  const goBack = useCallback(() => {
-    if (typeof window === "undefined") return router.push(hrefFallback)
-
-    const ref = document.referrer
-    const hasHistory = window.history.length > 1
-
-    const sameOrigin = !!ref && (() => {
-      try { return new URL(ref).origin === window.location.origin } catch { return false }
-    })()
-
-    const notSelf = !!ref && (() => {
-      try { return new URL(ref).pathname !== pathname } catch { return true }
-    })()
-
-    if (hasHistory && sameOrigin && notSelf) {
-      router.back()
-    } else {
-      router.push(hrefFallback)
-    }
-  }, [router, hrefFallback, pathname])
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") { e.preventDefault(); goBack() }
-    }
-    window.addEventListener("keydown", onKey)
-    return () => window.removeEventListener("keydown", onKey)
-  }, [goBack])
-
-  return (
-    <motion.button
-      onClick={goBack}
-      whileTap={{ scale: 0.97 }}
-      className={`inline-flex items-center gap-2 rounded-xl bg-white/90 px-4 py-2 text-slate-800 ring-1 ring-black/5 shadow hover:bg-white ${className}`}
-      aria-label="Go back"
-    >
-      <span className="text-lg">←</span>
-      <span className="font-semibold">{label}</span>
-    </motion.button>
-  )
-}
+import ToolWrapper from "@/components/ToolWrapper"
+import { Palette, Download, Plus, Trash2, RotateCcw } from "lucide-react"
 
 export default function GradientMaker() {
+  const router = useRouter()
   const [type, setType] = useState<"linear" | "radial">("linear")
   const [angle, setAngle] = useState(90)
   const [stops, setStops] = useState<string[]>(["#ff6b6b", "#4ecdc4"])
@@ -111,80 +63,169 @@ export default function GradientMaker() {
   }
 
   return (
-    <div>
-      <main className="min-h-screen p-6">
-        <section className="mx-auto max-w-3xl rounded-2xl bg-white/85 backdrop-blur p-6 shadow-xl">
-          {/* Back navigation */}
-          <div className="mb-4">
-            <BackButton hrefFallback="/tools" label="Back to Tools" />
-          </div>
-
-          <h1 className="text-xl font-bold mb-3">Gradient Maker</h1>
-          <div className="grid gap-4 sm:grid-cols-2">
+    <ToolWrapper
+      title="Gradient Maker"
+      description="Create beautiful gradients with customizable colors and angles"
+      icon={<Palette className="h-6 w-6 text-white" />}
+    >
+      <div className="p-6">
+        <div className="grid lg:grid-cols-2 gap-8">
+          {/* Controls Section */}
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.1 }}
+            className="space-y-6"
+          >
+            {/* Gradient Type */}
             <div className="space-y-3">
-              <div className="flex gap-3 items-center">
-                <label className="text-sm font-medium">Type</label>
-                <select
-                  value={type}
-                  onChange={(e) => setType(e.target.value as any)}
-                  className="rounded-lg border p-2 bg-white/70"
-                >
-                  <option value="linear">Linear</option>
-                  <option value="radial">Radial</option>
-                </select>
+              <label className="block text-sm font-medium text-white/80">Gradient Type</label>
+              <div className="flex gap-3">
+                {(["linear", "radial"] as const).map((t) => (
+                  <motion.button
+                    key={t}
+                    onClick={() => setType(t)}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className={`flex-1 rounded-xl px-4 py-3 font-medium transition-all ${
+                      type === t
+                        ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/25"
+                        : "bg-white/10 text-white/70 hover:bg-white/20"
+                    }`}
+                  >
+                    {t.charAt(0).toUpperCase() + t.slice(1)}
+                  </motion.button>
+                ))}
               </div>
+            </div>
 
-              {type === "linear" && (
-                <div>
-                  <label className="block text-sm font-medium">Angle: {angle}°</label>
-                  <input
-                    type="range"
-                    min={0}
-                    max={360}
-                    value={angle}
-                    onChange={(e) => setAngle(+e.target.value)}
-                    className="w-full"
-                  />
-                </div>
-              )}
+            {/* Angle Control */}
+            {type === "linear" && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                className="space-y-3"
+              >
+                <label className="block text-sm font-medium text-white/80">
+                  Angle: <span className="text-cyan-400">{angle}°</span>
+                </label>
+                <input
+                  type="range"
+                  min={0}
+                  max={360}
+                  value={angle}
+                  onChange={(e) => setAngle(+e.target.value)}
+                  className="w-full h-2 rounded-full appearance-none cursor-pointer bg-white/20 accent-cyan-500"
+                />
+              </motion.div>
+            )}
 
+            {/* Color Stops */}
+            <div className="space-y-3">
+              <label className="block text-sm font-medium text-white/80">Color Stops</label>
               <div className="space-y-2">
-                <div className="text-sm font-medium">Color Stops</div>
                 {stops.map((s, i) => (
-                  <div key={i} className="flex items-center gap-2">
-                    <input type="color" value={s} onChange={(e) => updateStop(i, e.target.value)} />
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 * i }}
+                    className="flex items-center gap-3"
+                  >
+                    <input
+                      type="color"
+                      value={s}
+                      onChange={(e) => updateStop(i, e.target.value)}
+                      className="h-10 w-10 rounded-xl cursor-pointer border-0 bg-transparent"
+                    />
                     <input
                       value={s}
                       onChange={(e) => updateStop(i, e.target.value)}
-                      className="flex-1 rounded-lg border p-2 bg-white/70"
+                      className="flex-1 rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-white placeholder-white/40 backdrop-blur-md focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/20 uppercase"
                     />
-                    <button onClick={() => removeStop(i)} className="text-sm underline opacity-70">
-                      Remove
-                    </button>
-                  </div>
+                    <motion.button
+                      onClick={() => removeStop(i)}
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      disabled={stops.length <= 2}
+                      className="rounded-xl bg-red-500/20 p-2.5 text-red-400 hover:bg-red-500/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <Trash2 className="h-5 w-5" />
+                    </motion.button>
+                  </motion.div>
                 ))}
-                <button onClick={addStop} className="text-sm underline">
-                  Add Stop
-                </button>
               </div>
-
-              <div>
-                <div className="text-sm font-medium mb-1">CSS</div>
-                <pre className="rounded-xl border bg-white/70 p-3 text-xs overflow-x-auto">background: {css};</pre>
-              </div>
-
-              <button onClick={downloadPng} className="text-sm underline">
-                Export as PNG
-              </button>
+              <motion.button
+                onClick={addStop}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2.5 text-white/70 hover:bg-white/20 hover:text-white transition-all"
+              >
+                <Plus className="h-4 w-4" />
+                Add Stop
+              </motion.button>
             </div>
 
-            <div>
-              <div className="h-48 rounded-xl border" style={{ background: css }} />
-              <canvas ref={canvasRef} className="mt-3 w-full h-0" aria-hidden />
+            {/* CSS Output */}
+            <div className="space-y-3">
+              <label className="block text-sm font-medium text-white/80">CSS Output</label>
+              <pre className="rounded-xl border border-white/20 bg-black/30 p-4 text-sm text-white/80 overflow-x-auto backdrop-blur-md">
+                background: {css};
+              </pre>
             </div>
-          </div>
-        </section>
-      </main>
-    </div>
+
+            {/* Actions */}
+            <div className="flex gap-3">
+              <motion.button
+                onClick={downloadPng}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 px-6 py-3 font-medium text-white shadow-lg shadow-cyan-500/25"
+              >
+                <Download className="h-5 w-5" />
+                Export PNG
+              </motion.button>
+              <motion.button
+                onClick={() => { setType("linear"); setAngle(90); setStops(["#ff6b6b", "#4ecdc4"]) }}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="flex items-center gap-2 rounded-xl bg-white/10 px-6 py-3 font-medium text-white/70 hover:bg-white/20 hover:text-white transition-all"
+              >
+                <RotateCcw className="h-5 w-5" />
+                Reset
+              </motion.button>
+            </div>
+          </motion.div>
+
+          {/* Preview Section */}
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.2 }}
+            className="space-y-4"
+          >
+            <label className="block text-sm font-medium text-white/80">Live Preview</label>
+            <motion.div
+              className="h-64 rounded-2xl border-2 border-white/20 shadow-2xl"
+              style={{ background: css }}
+              animate={{ scale: [1, 1.01, 1] }}
+              transition={{ duration: 3, repeat: Infinity }}
+            />
+            <div className="grid grid-cols-4 gap-3">
+              {stops.map((s, i) => (
+                <div
+                  key={i}
+                  className="h-16 rounded-xl border border-white/20"
+                  style={{ background: s }}
+                />
+              ))}
+            </div>
+          </motion.div>
+        </div>
+
+        {/* Hidden Canvas for Export */}
+        <canvas ref={canvasRef} className="w-full h-0" aria-hidden />
+      </div>
+    </ToolWrapper>
   )
 }

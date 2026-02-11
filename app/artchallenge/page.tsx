@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useCallback } from 'react';
+import PageTransition from "@/components/PageTransition";
 
 // --- GLOBAL TYPE DECLARATIONS ---
 // Fixes TypeScript error for Canvas environment variable
@@ -1172,6 +1173,7 @@ const App: React.FC = () => {
     // --- Render Logic ---
     
     return (
+        <PageTransition>
         <div className="min-h-screen p-4 font-sans flex flex-col items-center">
             {/* Game Header replaces the old H1. It is clickable to return home. */}
             <GameHeader onHomeClick={handleExitGame} gameMode={gameMode} />
@@ -1197,6 +1199,7 @@ const App: React.FC = () => {
                 />
             )}
         </div>
+        </PageTransition>
     );
 };
 

@@ -1,6 +1,10 @@
 "use client";
 
 import React, { useState, useMemo, useCallback, useEffect } from "react";
+import GameWrapper from "@/components/GameWrapper";
+import { Button } from "@/components/ui/button";
+import { motion } from "framer-motion";
+import { Trophy, Target, Zap } from "lucide-react";
 
 // --- GLOBAL TYPE DECLARATIONS ---
 declare const __app_id: string | undefined;
@@ -875,56 +879,21 @@ const App: React.FC = () => {
   // --- RENDER ---
 
   return (
-    <div className="min-h-screen p-6 font-sans flex flex-col items-center from-slate-100 to-slate-200">
-      {/* Header and Scoreboard */}
-      <div className="w-full max-w-6xl flex justify-between items-center mb-8 p-4 bg-white rounded-xl shadow-xl border-b-4 border-indigo-400">
-        <h1 className="text-3xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 tracking-wide">
-          Color Cascade
-        </h1>
-
-        <div className="flex items-center space-x-6 text-center">
-          <a
-            href="/games"
-            className="p-3 rounded-full text-gray-700 hover:bg-gray-200 transition-colors"
-            aria-label="Go to Home"
-          >
-            <svg
-              className="w-6 h-6"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
-              />
-            </svg>
-          </a>
-
-          <div className="bg-slate-50 px-4 py-2 rounded-lg border border-slate-200">
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">
-              Score
-            </p>
-            <p className="text-2xl font-black text-green-600">
-              {score}
-            </p>
-          </div>
-          <div className="bg-slate-50 px-4 py-2 rounded-lg border border-slate-200">
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">
-              Best
-            </p>
-            <p className="text-2xl font-black text-red-500">
-              {highScore}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <div className="flex flex-col lg:flex-row w-full max-w-[1600px] space-y-8 lg:space-y-0 lg:space-x-8 justify-center items-start">
+    <GameWrapper
+      title="Color Cascade"
+      description="Match colors to clear the board!"
+      stats={[
+        { label: "Score", value: score, icon: <Trophy className="w-4 h-4" /> },
+        { label: "High Score", value: highScore, icon: <Target className="w-4 h-4" /> },
+      ]}
+    >
+      <div className="w-full flex flex-col lg:flex-row justify-center items-start gap-8">
         {/* Main Game Grid */}
-        <div className="flex-shrink-0 mx-auto">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5 }}
+        >
           <MainGrid
             grid={grid}
             onDrop={handleDrop}
@@ -932,21 +901,25 @@ const App: React.FC = () => {
             highlightCells={highlightCells}
             matchCells={matchCells}
           />
-        </div>
+        </motion.div>
 
         {/* Tile Palette / Controls */}
-        <div className="w-full max-w-md lg:w-64 flex flex-col space-y-6 mx-auto">
-          {/* Pieces Container */}
-          <div className="p-4 bg-white rounded-xl shadow-xl border-2 border-gray-200 w-full min-h-[400px] flex flex-col">
-            <p className="text-lg font-bold text-gray-700 mb-6 text-center border-b pb-4 tracking-tight">
+        <div className="w-full max-w-md lg:w-64 flex flex-col space-y-6">
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="p-4 bg-white/10 backdrop-blur-xl rounded-xl border border-white/20 shadow-xl"
+          >
+            <p className="text-lg font-bold text-white/80 mb-4 text-center">
               DRAG PIECES
             </p>
             <div
-              className="flex flex-col items-center justify-start space-y-10 flex-grow py-4"
+              className="flex flex-col items-center justify-start space-y-4"
               onDragEnd={handleDragEnd}
             >
               {tileSet.length === 0 ? (
-                <div className="py-12 text-gray-400 animate-pulse">
+                <div className="py-8 text-white/50 animate-pulse">
                   Generating pieces...
                 </div>
               ) : (
@@ -961,22 +934,25 @@ const App: React.FC = () => {
                 ))
               )}
             </div>
-          </div>
+          </motion.div>
 
-          {/* New Game Button */}
-          <button
+          <Button
             onClick={resetGame}
-            className="w-full py-4 text-lg font-bold rounded-xl bg-indigo-600 text-white shadow-lg shadow-indigo-200 hover:bg-indigo-700 active:bg-indigo-800 transition-all transform active:scale-95"
+            className="w-full py-4 text-lg font-bold rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-xl hover:from-indigo-600 hover:to-purple-600"
           >
             New Game
-          </button>
+          </Button>
         </div>
       </div>
 
       {/* Game Over Modal */}
       {isGameOver && (
-        <div className="fixed inset-0 bg-slate-900/90 flex items-center justify-center z-50 p-4 backdrop-blur-sm transition-opacity">
-          <div className="bg-white rounded-2xl shadow-2xl p-10 w-full max-w-md text-center border-4 border-red-500 transform animate-bounce-in">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-white rounded-2xl shadow-2xl p-10 w-full max-w-md text-center border-4 border-red-500"
+          >
             <h2 className="text-5xl font-black text-gray-800 mb-2">
               GAME OVER
             </h2>
@@ -991,16 +967,16 @@ const App: React.FC = () => {
               </p>
             </div>
 
-            <button
+            <Button
               onClick={resetGame}
-              className="w-full py-4 text-xl font-bold rounded-xl bg-green-500 text-white shadow-xl shadow-green-200 hover:bg-green-600 hover:shadow-2xl transition-all transform hover:-translate-y-1"
+              className="w-full py-4 text-xl font-bold rounded-xl bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-xl hover:from-green-600 hover:to-emerald-600"
             >
               Try Again
-            </button>
-          </div>
+            </Button>
+          </motion.div>
         </div>
       )}
-    </div>
+    </GameWrapper>
   );
 };
 

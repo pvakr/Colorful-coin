@@ -2,6 +2,11 @@
 
 import React, { useReducer, useState, useMemo, useEffect } from 'react';
 import { Factory, DollarSign, Gem, TrendingUp, Zap, ShoppingCart, CheckCircle, XCircle, RefreshCcw } from 'lucide-react';
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { motion } from "framer-motion";
+import GameWrapper from "@/components/GameWrapper";
 
 // --- 1. TYPE DEFINITIONS & INITIAL DATA ---
 
@@ -100,554 +105,365 @@ const rgbToHex = (r: number, g: number, b: number): HexColor => {
   return `#${toHex(r)}${toHex(g)}${toHex(b)}` as HexColor;
 };
 
-// --- 3. REDUCER & ACTIONS ---
-
-type Action =
-  | { type: 'BUY_PIGMENT', pigmentId: string, units: number, cost: number }
-  | { type: 'TAKE_ORDER', order: IOrder }
-  | { type: 'FULFILL_ORDER', cost: number, payment: number, quality: number, volume: number, usedPigments: IInventory }
-  | { type: 'RESET_GAME' }
-  | { type: 'SET_MESSAGE', message: string };
-
-const gameReducer = (state: IAppState, action: Action): IAppState => {
-  switch (action.type) {
-    case 'BUY_PIGMENT':
-      if (state.money < action.cost) {
-        return { ...state, message: `Cannot afford ${action.units} units of ${action.pigmentId}. Need $${action.cost.toFixed(2)}.` };
-      }
-      return {
-        ...state,
-        money: state.money - action.cost,
-        inventory: {
-          ...state.inventory,
-          [action.pigmentId]: (state.inventory[action.pigmentId] || 0) + action.units,
-        },
-        message: `Purchased ${action.units} units of ${PIGMENTS.find(p => p.id === action.pigmentId)?.name || action.pigmentId} for $${action.cost.toFixed(2)}.`
-      };
-
-    case 'TAKE_ORDER':
-      return {
-        ...state,
-        currentOrder: action.order,
-        message: `New Order: ${action.order.name} - ${action.order.requiredGrade} Grade! Time to mix.`
-      };
-
-    case 'FULFILL_ORDER': {
-      let newReputation = state.reputation;
-      let profit = action.payment - action.cost;
-      let grade = action.quality; // quality is 0-100
-
-      // Reputation change logic
-      if (grade >= 90) newReputation = Math.min(100, newReputation + 5);
-      else if (grade >= 75) newReputation = Math.min(100, newReputation + 2);
-      else if (grade < 50) newReputation = Math.max(0, newReputation - 5);
-      else if (grade < 70) newReputation = Math.max(0, newReputation - 2);
-
-      // Deduct inventory
-      const newInventory = { ...state.inventory };
-      for (const id in action.usedPigments) {
-        newInventory[id] -= action.usedPigments[id];
-      }
-
-      let message = `Order fulfilled (${action.volume.toFixed(1)} units). Quality: ${grade.toFixed(1)}%. `;
-      message += `Cost: $${action.cost.toFixed(2)}, Paid: $${action.payment.toFixed(2)}. Profit: $${profit.toFixed(2)}. `;
-      message += grade >= 70 ? 'Customer is satisfied!' : 'Customer is disappointed...';
-
-
-      return {
-        ...state,
-        money: state.money + action.payment,
-        reputation: newReputation,
-        inventory: newInventory,
-        currentOrder: null,
-        message: message,
-      };
-    }
-
-    case 'RESET_GAME':
-      return INITIAL_STATE;
-
-    case 'SET_MESSAGE':
-      return { ...state, message: action.message };
-
-    default:
-      return state;
-  }
-};
-
-// --- 4. GAME LOGIC IMPLEMENTATION ---
-
-const generateNewOrder = (): IOrder => {
-  const grades: OrderGrade[] = ['Student', 'Industrial', 'Artist'];
-  const requiredGrade = grades[Math.floor(Math.random() * grades.length)];
-
-  // Determine complexity and payout based on grade
-  let requiredVolume = 5 + Math.floor(Math.random() * 10);
-  let payoutMultiplier = 1.0;
+/** Generates a random order */
+const generateOrder = (reputation: number): IOrder => {
+  const orderNames = ['Mona Lisa Restoration', 'Starry Night Commission', 'Large Blue Piece', 'Abstract #42', 'Portrait for Mayor'];
+  const targetHex = `#${Math.floor(Math.random()*16777215).toString(16).padStart(6, '0')}` as HexColor;
   
-  if (requiredGrade === 'Industrial') {
-    requiredVolume += 10;
-    payoutMultiplier = 1.5;
-  } else if (requiredGrade === 'Artist') {
-    requiredVolume -= 3; // Smaller, but high-value orders
-    payoutMultiplier = 3.0;
-  }
+  let grade: OrderGrade = 'Student';
+  if (reputation > 60) grade = 'Industrial';
+  if (reputation > 85) grade = 'Artist';
 
-  // Generate a random, achievable color (usually from mixing 2-3 primaries)
-  const primaries = [PIGMENTS.find(p => p.id === 'CR')!, PIGMENTS.find(p => p.id === 'CY')!, PIGMENTS.find(p => p.id === 'PB')!];
-  
-  const mixCount = Math.floor(Math.random() * 3) + 1; // 1 to 3 pigments
-  const mixComponents = [];
-  let rSum = 0, gSum = 0, bSum = 0;
-  
-  for (let i = 0; i < mixCount; i++) {
-    const pigment = primaries[Math.floor(Math.random() * primaries.length)];
-    const [r, g, b] = hexToRgb(pigment.colorHex);
-    rSum += r;
-    gSum += g;
-    bSum += b;
-    mixComponents.push(pigment.name);
-  }
-  
-  const avgR = rSum / mixCount;
-  const avgG = gSum / mixCount;
-  const avgB = bSum / mixCount;
-  
-  const targetHex = rgbToHex(avgR, avgG, avgB);
-  const colorName = mixComponents.length > 1 ? mixComponents.join(' + ') : mixComponents[0];
-  
+  const basePayoutMap = { 'Student': 100, 'Industrial': 500, 'Artist': 2000 };
+
   return {
-    id: crypto.randomUUID(),
-    name: `${colorName} Blend`,
+    id: Math.random().toString(36).substring(7),
+    name: orderNames[Math.floor(Math.random() * orderNames.length)],
     targetHex,
-    requiredVolume,
-    requiredGrade,
-    basePayout: requiredVolume * 10 * payoutMultiplier,
+    requiredVolume: Math.floor(Math.random() * 10) + 5,
+    requiredGrade: grade,
+    basePayout: basePayoutMap[grade],
   };
 };
 
-const getRequiredPurity = (grade: OrderGrade): number => {
-  switch (grade) {
-    case 'Student': return 1.1; // Easy, cheap pigments fine
-    case 'Industrial': return 1.5; // Needs some quality materials
-    case 'Artist': return 2.5; // Requires rare/expensive pigments for purity
-    default: return 1.0;
-  }
-};
+// --- 3. COMPONENT ---
 
-// --- 5. REACT COMPONENT ---
-
-const App: React.FC = () => {
-  const [state, dispatch] = useReducer(gameReducer, INITIAL_STATE);
-  const [mix, setMix] = useState<IMix>({}); // Current mix quantities
-  
-  // Lookup map for fast access
-  const pigmentMap = useMemo(() => new Map(PIGMENTS.map(p => [p.id, p])), []);
-
-  // --- Utility Hooks ---
-
-  const totalMixedVolume = useMemo(() => 
-    Object.values(mix).reduce((sum, amount) => sum + amount, 0), [mix]);
-
-  const mixingCost = useMemo(() => {
-    let cost = 0;
-    for (const id in mix) {
-      cost += mix[id] * (pigmentMap.get(id)?.costPerUnit || 0);
-    }
-    return cost;
-  }, [mix, pigmentMap]);
-
-  // --- Core Mixing Calculation ---
-  const { mixedColorHex, colorDistance, pigmentPurityScore, finalQualityPercentage, requiredPurity } = useMemo(() => {
-    if (!state.currentOrder || totalMixedVolume === 0) {
-      return { mixedColorHex: '#4F46E5' as HexColor, colorDistance: 1000, pigmentPurityScore: 0, finalQualityPercentage: 0, requiredPurity: 0 };
-    }
-
-    const order = state.currentOrder;
-    const totalVolume = totalMixedVolume;
-    const targetRgb = hexToRgb(order.targetHex);
-    const reqPurity = getRequiredPurity(order.requiredGrade);
-
-    let totalR = 0;
-    let totalG = 0;
-    let totalB = 0;
-    let totalPurity = 0;
-
-    for (const id in mix) {
-      const pigment = pigmentMap.get(id);
-      if (pigment) {
-        const amount = mix[id];
-        const [r, g, b] = hexToRgb(pigment.colorHex);
-
-        totalR += r * amount;
-        totalG += g * amount;
-        totalB += b * amount;
-        totalPurity += pigment.purityMultiplier * amount;
+export default function App() {
+  const [state, dispatch] = useReducer((state: IAppState, action: { type: string; payload?: any }): IAppState => {
+    switch (action.type) {
+      case 'RESET_GAME':
+        return INITIAL_STATE;
+      case 'BUY_PIGMENT': {
+        const { id, amount } = action.payload;
+        const pigment = PIGMENTS.find(p => p.id === id)!;
+        const cost = pigment.costPerUnit * amount;
+        if (state.money < cost) return { ...state, message: `Not enough money to buy ${pigment.name}!` };
+        return {
+          ...state,
+          money: state.money - cost,
+          inventory: { ...state.inventory, [id]: state.inventory[id] + amount },
+          message: `Bought ${amount} units of ${pigment.name}!`
+        };
       }
+      case 'TAKE_ORDER':
+        return { ...state, currentOrder: action.payload, message: `Accepted order: ${action.payload.name}` };
+      case 'MIX_PIGMENTS': {
+        const { mix, targetHex } = action.payload;
+        const order = state.currentOrder!;
+        let totalCost = 0;
+        let finalR = 0, finalG = 0, finalB = 0;
+        let totalUnits = 0;
+
+        Object.entries(mix).forEach(([id, units]) => {
+          const u = units as number;
+          if (u > 0) {
+            const pigment = PIGMENTS.find(p => p.id === id)!;
+            totalCost += pigment.costPerUnit * u;
+            const [r, g, b] = hexToRgb(pigment.colorHex);
+            finalR += r * u * pigment.purityMultiplier;
+            finalG += g * u * pigment.purityMultiplier;
+            finalB += b * u * pigment.purityMultiplier;
+            totalUnits += u * pigment.purityMultiplier;
+          }
+        });
+
+        const mixedHex = totalUnits > 0 ? rgbToHex(finalR / totalUnits, finalG / totalUnits, finalB / totalUnits) : '#000000';
+        const targetRgb = hexToRgb(order.targetHex);
+        const mixedRgb = hexToRgb(mixedHex);
+        const distance = calculateColorDistance(targetRgb, mixedRgb);
+        
+        let qualityMultiplier = 1;
+        let quality = 'Failed';
+        if (distance < 15) { qualityMultiplier = 2.0; quality = 'Perfect'; }
+        else if (distance < 30) { qualityMultiplier = 1.5; quality = 'Great'; }
+        else if (distance < 60) { qualityMultiplier = 1.0; quality = 'Good'; }
+        else if (distance < 100) { qualityMultiplier = 0.5; quality = 'Poor'; }
+
+        const earnings = Math.floor(order.basePayout * qualityMultiplier - totalCost);
+        const repGain = quality === 'Failed' ? 0 : (qualityMultiplier * 10);
+        const newRep = Math.min(100, Math.max(0, state.reputation + repGain));
+
+        // Deduct inventory
+        const newInventory = { ...state.inventory };
+        Object.entries(mix).forEach(([id, units]) => {
+          const u = units as number;
+          if (u > 0) newInventory[id] = Math.max(0, newInventory[id] - u);
+        });
+
+        return {
+          ...state,
+          money: state.money + earnings,
+          reputation: newRep,
+          inventory: newInventory,
+          currentOrder: null,
+          message: `Order complete! Quality: ${quality}. Earnings: $${earnings}.`,
+        };
+      }
+      case 'SKIP_ORDER':
+        return { ...state, currentOrder: null, message: 'Order skipped.' };
+      default:
+        return state;
     }
+  }, INITIAL_STATE);
 
-    const avgR = totalR / totalVolume;
-    const avgG = totalG / totalVolume;
-    const avgB = totalB / totalVolume;
-    const avgPurity = totalPurity / totalVolume;
-
-    const mixedRgb: [number, number, number] = [avgR, avgG, avgB];
-    const hex = rgbToHex(avgR, avgG, avgB);
-    const distance = calculateColorDistance(mixedRgb, targetRgb);
-
-    // Color Score (0-50 points): 50 points for distance 0, 0 points for distance 500+
-    const colorScore = Math.max(0, 50 - (distance / 10)); 
-
-    // Purity Score (0-50 points): Based on meeting the purity threshold
-    let purityScore = Math.min(50, (avgPurity / reqPurity) * 50);
-
-    // Final Quality Percentage (0-100)
-    const quality = colorScore + purityScore;
-
-    return { 
-      mixedColorHex: hex, 
-      colorDistance: distance, 
-      pigmentPurityScore: avgPurity,
-      finalQualityPercentage: quality,
-      requiredPurity: reqPurity,
-    };
-  }, [state.currentOrder, mix, totalMixedVolume, pigmentMap]);
-
-  // --- Handlers ---
-
-  const handleBuyPigment = (pigment: IPigment) => {
-    const units = 10;
-    const cost = units * pigment.costPerUnit;
-    dispatch({ type: 'BUY_PIGMENT', pigmentId: pigment.id, units, cost });
-  };
+  const router = useRouter()
+  const handleBack = () => router.push("/games");
 
   const handleTakeOrder = () => {
-    if (state.currentOrder) {
-      dispatch({ type: 'SET_MESSAGE', message: 'Finish the current order first!' });
-      return;
-    }
-    const order = generateNewOrder();
-    dispatch({ type: 'TAKE_ORDER', order });
-    setMix({}); // Reset mixing station
+    const newOrder = generateOrder(state.reputation);
+    dispatch({ type: 'TAKE_ORDER', payload: newOrder });
   };
 
-  const handleUpdateMix = (pigmentId: string, amount: number) => {
-    const available = state.inventory[pigmentId] || 0;
-    const newAmount = Math.max(0, Math.min(available, amount)); // Clamp between 0 and available
+  const stats = [
+    { label: "Money", value: `$${state.money.toFixed(2)}`, icon: <DollarSign className="w-4 h-4" /> },
+    { label: "Reputation", value: `${state.reputation}%`, icon: <TrendingUp className="w-4 h-4" /> },
+  ];
 
-    setMix(prevMix => {
-      const newMix = { ...prevMix };
-      if (newAmount > 0) {
-        newMix[pigmentId] = newAmount;
-      } else {
-        delete newMix[pigmentId];
-      }
-      return newMix;
-    });
-  };
+  return (
+    <GameWrapper
+      title="Pigment Mixer Tycoon"
+      description="Mix colors, fulfill orders, and build your empire"
+      stats={stats}
+    >
+      <div className="max-w-7xl mx-auto">
+        
+        {/* Message Banner */}
+        <motion.div 
+          className="p-4 mb-6 rounded-xl bg-gradient-to-r from-indigo-500/20 to-purple-500/20 border border-white/10 text-white shadow-lg"
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <div className="flex items-center gap-2">
+            <Zap className="w-5 h-5 text-yellow-400" />
+            <span className="font-medium">{state.message}</span>
+          </div>
+        </motion.div>
 
-  const handleFulfillOrder = () => {
-    const order = state.currentOrder;
-    if (!order) {
-      dispatch({ type: 'SET_MESSAGE', message: 'No active order to fulfill.' });
-      return;
-    }
+        {/* Pigment Market */}
+        <motion.div 
+          className="p-4 bg-white/10 backdrop-blur-lg rounded-2xl border border-white/20 shadow-xl mb-6"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+        >
+          <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+            <ShoppingCart className="w-5 h-5" />
+            Pigment Market
+          </h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {PIGMENTS.map((pigment) => (
+              <div key={pigment.id} className="p-3 bg-white/5 rounded-xl border border-white/10 hover:bg-white/10 transition-all">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-6 h-6 rounded-full border border-white/30" style={{ backgroundColor: pigment.colorHex }} />
+                  <div>
+                    <div className="font-semibold text-white text-sm">{pigment.name}</div>
+                    <div className={`text-xs ${
+                      pigment.rarity === 'Masterpiece' ? 'text-purple-400' :
+                      pigment.rarity === 'Rare' ? 'text-yellow-400' : 'text-gray-400'
+                    }`}>{pigment.rarity}</div>
+                  </div>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-white/70 text-sm">${pigment.costPerUnit}/unit</span>
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => dispatch({ type: 'BUY_PIGMENT', payload: { id: pigment.id, amount: 10 } })}
+                      className="px-2 py-1 bg-white/10 hover:bg-white/20 rounded text-xs text-white transition-colors"
+                    >
+                      +10
+                    </button>
+                    <button
+                      onClick={() => dispatch({ type: 'BUY_PIGMENT', payload: { id: pigment.id, amount: 50 } })}
+                      className="px-2 py-1 bg-white/10 hover:bg-white/20 rounded text-xs text-white transition-colors"
+                    >
+                      +50
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </motion.div>
 
-    if (totalMixedVolume < order.requiredVolume) {
-      dispatch({ type: 'SET_MESSAGE', message: `Insufficient volume mixed! Need ${order.requiredVolume.toFixed(1)} units.` });
-      return;
-    }
+        {/* Inventory */}
+        <motion.div 
+          className="p-4 bg-white/10 backdrop-blur-lg rounded-2xl border border-white/20 shadow-xl mb-6"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+            <Factory className="w-5 h-5" />
+            Your Inventory
+          </h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {PIGMENTS.map((pigment) => (
+              <div key={pigment.id} className="p-3 bg-white/5 rounded-xl border border-white/10">
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded-full border border-white/30" style={{ backgroundColor: pigment.colorHex }} />
+                  <span className="text-white text-sm font-medium">{pigment.name}</span>
+                </div>
+                <div className="text-white/60 text-sm mt-1">{state.inventory[pigment.id]} units</div>
+              </div>
+            ))}
+          </div>
+        </motion.div>
 
-    // Calculate payout based on quality (Max 1.2x base payout)
-    let payoutMultiplier = 0;
-    if (finalQualityPercentage >= 95) payoutMultiplier = 1.2;
-    else if (finalQualityPercentage >= 70) payoutMultiplier = 1.0;
-    else if (finalQualityPercentage >= 50) payoutMultiplier = 0.8;
-    else payoutMultiplier = 0.5; // Failed delivery
-
-    const payment = order.basePayout * payoutMultiplier;
-
-    // Fulfill
-    dispatch({
-      type: 'FULFILL_ORDER',
-      cost: mixingCost,
-      payment: payment,
-      quality: finalQualityPercentage,
-      volume: totalMixedVolume,
-      usedPigments: mix,
-    });
-
-    setMix({}); // Clear mixing station after fulfillment
-  };
-
-  // --- UI Components ---
-
-  const StatCard: React.FC<{ icon: React.ReactNode, title: string, value: string, color: string }> = ({ icon, title, value, color }) => (
-    <div className={`p-4 rounded-xl shadow-lg flex items-center bg-white ${color} transition-all duration-300`}>
-      <div className={`p-3 rounded-full mr-4 bg-opacity-20 ${color.replace('bg-', 'text-')}`}>
-        {icon}
-      </div>
-      <div>
-        <div className="text-sm font-medium text-gray-500">{title}</div>
-        <div className="text-2xl font-bold text-gray-900">{value}</div>
-      </div>
-    </div>
-  );
-
-  const PigmentMarket: React.FC = () => (
-    <div className="p-4 bg-white rounded-xl shadow-lg">
-      <h2 className="text-xl font-bold mb-4 text-gray-800 flex items-center">
-        <ShoppingCart className="w-5 h-5 mr-2 text-indigo-600" /> Pigment Market (Buy 10 Units)
-      </h2>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {PIGMENTS.map(p => (
-          <div
-            key={p.id}
-            className={`p-3 border rounded-lg text-center cursor-pointer transition-all hover:shadow-md ${p.costPerUnit > 5 ? 'bg-red-50/50 border-red-200' : 'bg-green-50/50 border-green-200'}`}
+        {/* Order Section */}
+        {!state.currentOrder ? (
+          <motion.div 
+            className="p-6 bg-gradient-to-br from-indigo-600/30 to-purple-600/30 backdrop-blur-lg rounded-2xl border border-white/20 shadow-xl text-center"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.3 }}
           >
-            <div className="font-semibold text-sm mb-1">{p.name} ({p.id})</div>
-            <div className="text-xs text-gray-600 mb-2">Purity: {p.purityMultiplier.toFixed(1)} | Cost: ${p.costPerUnit.toFixed(2)}</div>
-            <div className="w-full h-4 rounded-full mb-2" style={{ backgroundColor: p.colorHex }}></div>
-            <button
-              onClick={() => handleBuyPigment(p)}
-              className="w-full text-xs py-1 bg-indigo-500 text-white rounded-md hover:bg-indigo-600 disabled:opacity-50 transition"
-              disabled={state.money < p.costPerUnit * 10}
+            <Gem className="w-12 h-12 mx-auto text-yellow-400 mb-3" />
+            <h2 className="text-2xl font-bold text-white mb-2">New Orders Available</h2>
+            <p className="text-white/70 mb-4">Accept an order to start mixing pigments and earning money!</p>
+            <Button 
+              onClick={handleTakeOrder}
+              className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-lg px-8 py-3"
             >
-              Buy ($:{(p.costPerUnit * 10).toFixed(2)})
-            </button>
-            <div className="text-xs mt-1 font-medium text-gray-500">Stock: {state.inventory[p.id] || 0}</div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-
-  const MixingStation: React.FC = () => {
-    const order = state.currentOrder;
-    const pigmentIdsInMix = Object.keys(state.inventory).filter(id => state.inventory[id] > 0);
-
-    return (
-      <div className="p-4 bg-white rounded-xl shadow-lg md:col-span-2">
-        <h2 className="text-xl font-bold mb-4 text-gray-800 flex items-center">
-          <Factory className="w-5 h-5 mr-2 text-indigo-600" /> Mixing Station
-        </h2>
-
-        {/* Current Mix Visual */}
-        <div className="flex justify-between items-center mb-4 p-3 border rounded-lg bg-gray-50">
-          <div className="text-sm font-medium text-gray-700">Mixed Paint Color:</div>
-          <div className="w-16 h-8 rounded-full border-2 border-gray-300 shadow-inner" style={{ backgroundColor: mixedColorHex }}></div>
-          <div className="text-sm font-medium text-gray-700">Volume: <span className="text-indigo-600 font-bold">{totalMixedVolume.toFixed(1)} / {order?.requiredVolume.toFixed(1) ?? 'N/A'}</span></div>
-          <div className="text-sm font-medium text-gray-700">Cost: <span className="text-red-600 font-bold">${mixingCost.toFixed(2)}</span></div>
-        </div>
-
-        {/* Pigment Sliders */}
-        <div className="space-y-4 max-h-64 overflow-y-auto pr-2">
-          {pigmentIdsInMix.map(id => {
-            const pigment = pigmentMap.get(id)!;
-            const available = state.inventory[id];
-            const currentAmount = mix[id] || 0;
-
-            return (
-              <div key={id} className="flex items-center space-x-3">
-                <div className="w-1/4">
-                  <span className="font-semibold text-sm" style={{ color: pigment.colorHex }}>{pigment.name}</span>
-                  <span className="text-xs text-gray-500 block">({pigment.rarity})</span>
-                </div>
-                <div className="w-3/4">
-                  <input
-                    type="range"
-                    min="0"
-                    max={available}
-                    step="0.1"
-                    value={currentAmount}
-                    onChange={(e) => handleUpdateMix(id, parseFloat(e.target.value))}
-                    className="w-full h-2 bg-indigo-200 rounded-lg appearance-none cursor-pointer range-lg"
-                    style={{ accentColor: pigment.colorHex }}
+              Take New Order
+            </Button>
+          </motion.div>
+        ) : (
+          <motion.div 
+            className="p-6 bg-white/10 backdrop-blur-lg rounded-2xl border border-white/20 shadow-xl"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.3 }}
+          >
+            <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+              <CheckCircle className="w-5 h-5 text-green-400" />
+              Current Order
+            </h2>
+            
+            <div className="flex flex-col md:flex-row gap-6 mb-6">
+              <div className="flex-1">
+                <div className="text-white/60 text-sm mb-1">Target Color</div>
+                <div className="flex items-center gap-3">
+                  <div 
+                    className="w-16 h-16 rounded-xl border-2 border-white/30 shadow-lg"
+                    style={{ backgroundColor: state.currentOrder.targetHex }}
                   />
-                  <div className="flex justify-between text-xs text-gray-600 mt-1">
-                    <span>Used: {currentAmount.toFixed(1)}</span>
-                    <span>Available: {available.toFixed(1)}</span>
+                  <div>
+                    <div className="text-white font-bold">{state.currentOrder.name}</div>
+                    <div className="text-white/60 text-sm">{state.currentOrder.requiredGrade} Grade</div>
+                    <div className="text-white/60 text-sm">Volume: {state.currentOrder.requiredVolume} units</div>
                   </div>
                 </div>
               </div>
-            );
-          })}
-        </div>
+              <div className="flex-1">
+                <div className="text-white/60 text-sm mb-1">Reward</div>
+                <div className="text-3xl font-bold text-green-400">
+                  ${state.currentOrder.basePayout}
+                </div>
+                <div className="text-white/60 text-sm">Base payout (can increase with quality)</div>
+              </div>
+            </div>
 
-        {/* Fulfillment Button */}
-        {order && (
-          <div className="mt-6 pt-4 border-t border-gray-100">
-            <button
-              onClick={handleFulfillOrder}
-              className="w-full py-3 bg-green-600 text-white font-bold rounded-lg shadow-md hover:bg-green-700 transition disabled:opacity-50"
-              disabled={totalMixedVolume < order.requiredVolume || totalMixedVolume === 0}
-            >
-              Fulfill Order! (Mix Volume: {totalMixedVolume.toFixed(1)})
-            </button>
-            <p className="text-center text-xs mt-2 text-gray-500">
-              {totalMixedVolume < order.requiredVolume ? 'Not enough volume mixed.' : `Ready to deliver: Total Cost $${mixingCost.toFixed(2)}`}
-            </p>
-          </div>
+            <MixingStation currentOrder={state.currentOrder} dispatch={dispatch} inventory={state.inventory} />
+          </motion.div>
         )}
       </div>
-    );
+    </GameWrapper>
+  );
+}
+
+// --- 4. MIXING STATION SUB-COMPONENT ---
+
+function MixingStation({ currentOrder, dispatch, inventory }: { currentOrder: IOrder, dispatch: any, inventory: IInventory }) {
+  const [mix, setMix] = useState<IMix>({});
+  const [showPreview, setShowPreview] = useState(false);
+
+  const handleMixChange = (id: string, value: string) => {
+    setMix(prev => ({ ...prev, [id]: Math.max(0, parseInt(value) || 0) }));
   };
 
-  const OrderDetails: React.FC = () => {
-    const order = state.currentOrder;
-    const gradeColor = order?.requiredGrade === 'Artist' ? 'text-purple-600 bg-purple-100' : 
-                       order?.requiredGrade === 'Industrial' ? 'text-yellow-600 bg-yellow-100' : 
-                       'text-green-600 bg-green-100';
+  const mixedHex = useMemo(() => {
+    let totalR = 0, totalG = 0, totalB = 0, totalUnits = 0;
+    
+    Object.entries(mix).forEach(([id, units]) => {
+      const u = units as number;
+      if (u > 0) {
+        const pigment = PIGMENTS.find(p => p.id === id)!;
+        const [r, g, b] = hexToRgb(pigment.colorHex);
+        totalR += r * u * pigment.purityMultiplier;
+        totalG += g * u * pigment.purityMultiplier;
+        totalB += b * u * pigment.purityMultiplier;
+        totalUnits += u * pigment.purityMultiplier;
+      }
+    });
 
-    return (
-      <div className="p-4 bg-white rounded-xl shadow-lg">
-        <h2 className="text-xl font-bold mb-4 text-gray-800 flex items-center">
-          <Gem className="w-5 h-5 mr-2 text-indigo-600" /> Current Order
-        </h2>
+    return totalUnits > 0 ? rgbToHex(totalR / totalUnits, totalG / totalUnits, totalB / totalUnits) : '#000000';
+  }, [mix]);
 
-        {!order ? (
-          <div className="text-center p-8 bg-indigo-50 rounded-lg">
-            <p className="text-lg font-medium text-indigo-800 mb-4">No active order.</p>
-            <button
-              onClick={handleTakeOrder}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg shadow-md hover:bg-indigo-700 transition flex items-center justify-center mx-auto"
-            >
-              <TrendingUp className="w-5 h-5 mr-2" /> Take New Order
-            </button>
-          </div>
-        ) : (
-          <div>
-            <div className="space-y-3">
-              <p className="text-lg font-bold">Target: {order.name}</p>
-              <p className="flex items-center justify-between text-sm">
-                <span className="font-medium">Required Grade:</span>
-                <span className={`px-2 py-0.5 rounded-full font-semibold ${gradeColor}`}>{order.requiredGrade}</span>
-              </p>
-              <p className="flex items-center justify-between text-sm">
-                <span className="font-medium">Volume Needed:</span>
-                <span className="font-bold text-indigo-600">{order.requiredVolume.toFixed(1)} units</span>
-              </p>
-              <p className="flex items-center justify-between text-sm">
-                <span className="font-medium">Base Payout:</span>
-                <span className="font-bold text-green-600">${order.basePayout.toFixed(2)}</span>
-              </p>
-            </div>
-            
-            <div className="mt-4 p-3 border rounded-lg flex items-center justify-center space-x-4">
-              <div className="w-12 h-12 rounded-full border-4 border-gray-300" style={{ backgroundColor: order.targetHex }}></div>
-              <p className="font-mono text-xs text-gray-700">Target Color: {order.targetHex}</p>
-            </div>
-
-            {/* Quality Metrics */}
-            {totalMixedVolume > 0 && (
-              <div className="mt-4 pt-4 border-t border-gray-100 space-y-3">
-                <h3 className="font-semibold text-gray-700">Mixing Analysis:</h3>
-                
-                {/* Color Match */}
-                <div className="text-xs">
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="font-medium">Color Match Score (Max 50):</span>
-                    <span className={`font-bold ${colorDistance < 50 ? 'text-green-600' : 'text-red-600'}`}>
-                      {Math.max(0, 50 - (colorDistance / 10)).toFixed(1)} / 50
-                    </span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-1.5">
-                    <div className="bg-blue-500 h-1.5 rounded-full" style={{ width: `${Math.min(100, Math.max(0, 50 - (colorDistance / 10)) * 2)}%` }}></div>
-                  </div>
-                </div>
-
-                {/* Purity Score */}
-                <div className="text-xs">
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="font-medium">Pigment Purity ({requiredPurity.toFixed(1)} Req):</span>
-                    <span className={`font-bold ${pigmentPurityScore >= requiredPurity ? 'text-green-600' : 'text-red-600'}`}>
-                      {pigmentPurityScore.toFixed(2)}
-                    </span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-1.5">
-                    <div className="bg-purple-500 h-1.5 rounded-full" style={{ width: `${Math.min(100, (pigmentPurityScore / (requiredPurity + 1)) * 100)}%` }}></div>
-                  </div>
-                </div>
-
-                {/* Final Quality */}
-                <div className="text-sm pt-2">
-                  <div className="flex justify-between items-center">
-                    <span className="font-bold text-lg">Estimated Quality:</span>
-                    <span className={`font-extrabold text-2xl ${finalQualityPercentage >= 70 ? 'text-green-700' : 'text-red-700'}`}>
-                      {finalQualityPercentage.toFixed(1)}%
-                    </span>
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {(finalQualityPercentage >= 70 && requiredPurity <= pigmentPurityScore) ? 'Meets Minimum Quality standards.' : 'WARNING: Quality or Purity insufficient!'}
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    );
+  const handleSubmit = () => {
+    dispatch({ type: 'MIX_PIGMENTS', payload: { mix, targetHex: currentOrder.targetHex } });
+    setMix({});
+    setShowPreview(false);
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 p-4 md:p-8 font-['Inter',_sans-serif]">
-      <div className="max-w-7xl mx-auto">
-        
-        {/* Title and Reset */}
-        <div className="flex justify-between items-center mb-6 border-b pb-3">
-          <h1 className="text-3xl font-extrabold text-indigo-700 flex items-center">
-            <Zap className="w-6 h-6 mr-2 text-indigo-500" /> Pigment Mixer Tycoon
-          </h1>
+    <div className="p-4 bg-white/5 rounded-xl border border-white/10">
+      <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+        <Factory className="w-4 h-4" />
+        Mixing Station
+      </h3>
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+        {PIGMENTS.map((pigment) => (
+          <div key={pigment.id} className="flex flex-col">
+            <div className="flex items-center gap-1 mb-1">
+              <div className="w-4 h-4 rounded-full" style={{ backgroundColor: pigment.colorHex }} />
+              <span className="text-white/70 text-xs truncate">{pigment.name}</span>
+            </div>
+            <input
+              type="number"
+              min="0"
+              max={inventory[pigment.id]}
+              value={mix[pigment.id] || ''}
+              onChange={(e) => handleMixChange(pigment.id, e.target.value)}
+              className="w-full px-2 py-1 bg-white/10 border border-white/20 rounded text-white text-sm"
+              placeholder="0"
+            />
+            <span className="text-white/40 text-xs">Avail: {inventory[pigment.id]}</span>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="text-white/60 text-sm">Preview:</div>
+          <div 
+            className="w-12 h-12 rounded-lg border-2 border-white/30 shadow-lg"
+            style={{ backgroundColor: mixedHex }}
+          />
+          <div className="text-white/40 text-xs font-mono">{mixedHex}</div>
+        </div>
+
+        <div className="flex gap-2">
           <button
-            onClick={() => dispatch({ type: 'RESET_GAME' })}
-            className="px-3 py-1 bg-gray-200 text-gray-700 rounded-lg text-sm hover:bg-gray-300 transition flex items-center"
+            onClick={() => setShowPreview(!showPreview)}
+            className="px-3 py-1 bg-white/10 hover:bg-white/20 rounded text-sm text-white transition-colors"
           >
-            <RefreshCcw className="w-4 h-4 mr-1" /> Reset Game
+            Preview
+          </button>
+          <button
+            onClick={() => setMix({})}
+            className="px-3 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded text-sm transition-colors"
+          >
+            Clear
+          </button>
+          <button
+            onClick={handleSubmit}
+            className="px-4 py-1 bg-green-500 hover:bg-green-600 rounded text-sm text-white transition-colors"
+          >
+            Submit Mix
           </button>
         </div>
-
-        {/* Stats Panel */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-6">
-          <StatCard
-            icon={<DollarSign className="w-6 h-6" />}
-            title="Money"
-            value={`$${state.money.toFixed(2)}`}
-            color="bg-green-100 text-green-600"
-          />
-          <StatCard
-            icon={<TrendingUp className="w-6 h-6" />}
-            title="Reputation"
-            value={`${state.reputation}%`}
-            color="bg-blue-100 text-blue-600"
-          />
-          <StatCard
-            icon={<CheckCircle className="w-6 h-6" />}
-            title="Current Pigments"
-            value={`${Object.values(state.inventory).reduce((a, b) => a + b, 0).toFixed(0)} units`}
-            color="bg-indigo-100 text-indigo-600"
-          />
-        </div>
-        
-        {/* Message Banner */}
-        <div className="p-3 mb-6 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-800 shadow-sm font-medium">
-          {state.message}
-        </div>
-
-        {/* Main Grid: Market & Orders */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-          <div className="lg:col-span-2">
-            <PigmentMarket />
-          </div>
-          <OrderDetails />
-        </div>
-
-        {/* Mixing Station */}
-        {state.currentOrder && (
-          <MixingStation />
-        )}
       </div>
     </div>
   );
-};
-
-export default App;
+}

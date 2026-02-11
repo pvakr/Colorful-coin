@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import GameWrapper from "@/components/GameWrapper"
+import { Trophy } from "lucide-react"
 
 const COLORS = ["#FF6C00", "#00FFB3", "#FF003C", "#7D4AFF", "#00E4FF", "#FFEA00", "#00FF66", "#FF66CC"]
 
@@ -20,8 +21,6 @@ function shuffle(array: string[]): string[] {
 }
 
 export default function ColorMatcherPage() {
-  const router = useRouter()
-
   const [tiles, setTiles] = useState<
     {
       id: number
@@ -95,46 +94,32 @@ export default function ColorMatcherPage() {
     }
   }
 
-  const handleBack = () => {
-    router.push("/games")
-  }
-
   return (
-    <div>
-      <div className="fixed top-6 left-6">
-        <Button variant="outline" size="sm" className="bg-transparent hover:bg-transparent border px-3" onClick={handleBack}>
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Games
-        </Button>
-      </div>
-    <main className="min-h-screen flex flex-col items-center justify-center px-4 py-12">
-      <section className="w-full max-w-3xl text-center">
-        <div className="flex flex-col items-center gap-3 mb-2">
-          <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight">Color Matcher</h1>
-          <div className="flex items-center gap-3">
-            <span className="inline-flex items-center gap-2 text-xs sm:text-sm font-medium border rounded-full px-3 py-1">
-              <span>Score</span>
-              <span className="font-semibold">{score}</span>
-            </span>
-            <span className="inline-flex items-center gap-2 text-xs sm:text-sm font-medium border rounded-full px-3 py-1">
-              <span>Round</span>
-              <span className="font-semibold">{round}</span>
-            </span>
-          </div>
-        </div>
-
+    <GameWrapper
+      title="Color Matcher"
+      description="Match the colors to complete the puzzle"
+      stats={[
+        { label: "Score", value: score, icon: <Trophy className="w-4 h-4" /> },
+        { label: "Round", value: round },
+      ]}
+    >
+      <div className="w-full max-w-3xl text-center">
         <div className="mx-auto w-full max-w-md grid grid-cols-4 gap-1">
           {tiles.map((tile, index) => (
-            <div
+            <motion.div
               key={tile.id}
               onClick={() => handleClick(index)}
-              className={`w-full aspect-square rounded-md border border-white/40 transition-transform duration-300 ease-in-out ${
+              className={`w-full aspect-square rounded-md border border-white/40 transition-transform duration-300 ease-in-out cursor-pointer ${
                 tile.flipped || tile.matched ? "rotate-y-0" : "rotate-y-180"
               }`}
               style={{
-                backgroundColor: tile.flipped || tile.matched ? tile.color : "gray",
+                backgroundColor: tile.flipped || tile.matched ? tile.color : "#374151",
                 cursor: tile.flipped || tile.matched ? "default" : "pointer",
               }}
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.3, delay: index * 0.02 }}
+              whileHover={{ scale: tile.flipped || tile.matched ? 1 : 1.05 }}
             />
           ))}
         </div>
@@ -142,18 +127,12 @@ export default function ColorMatcherPage() {
         <Dialog open={isCompleteOpen} onOpenChange={setIsCompleteOpen}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle className="text-2xl">Round Complete</DialogTitle>
+              <DialogTitle className="text-2xl">Round Complete!</DialogTitle>
               <DialogDescription>
                 Score: <span className="font-semibold">{score}</span>
               </DialogDescription>
             </DialogHeader>
             <div className="flex justify-end gap-2">
-              <Button
-                variant="outline"
-                onClick={() => router.push("/games")}
-              >
-                Back to Games
-              </Button>
               <Button
                 onClick={() => {
                   setIsCompleteOpen(false)
@@ -166,8 +145,10 @@ export default function ColorMatcherPage() {
             </div>
           </DialogContent>
         </Dialog>
-      </section>
-      </main>
-    </div>
+      </div>
+    </GameWrapper>
   )
 }
+
+// Import motion for animations
+import { motion } from "framer-motion"

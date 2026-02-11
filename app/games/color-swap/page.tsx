@@ -1,9 +1,10 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import GameWrapper from "@/components/GameWrapper"
+import { Trophy, RefreshCw } from "lucide-react"
+import { motion, AnimatePresence } from "framer-motion"
 
 const GRID_SIZE = 6
 const COLORS = ["red", "blue", "green", "yellow", "purple"]
@@ -28,7 +29,6 @@ function cloneGrid(grid: Tile[][]): Tile[][] {
 }
 
 export default function ColorSwapPuzzle() {
-  const router = useRouter()
   const [grid, setGrid] = useState<Tile[][]>(generateGrid())
   const [selected, setSelected] = useState<[number, number] | null>(null)
   const [score, setScore] = useState(0)
@@ -62,7 +62,6 @@ export default function ColorSwapPuzzle() {
   const findMatches = (grid: Tile[][]): [number, number][] => {
     const matches: [number, number][] = []
 
-    // Horizontal
     for (let row = 0; row < GRID_SIZE; row++) {
       for (let col = 0; col < GRID_SIZE - 2; col++) {
         const color = grid[row][col].color
@@ -77,7 +76,6 @@ export default function ColorSwapPuzzle() {
       }
     }
 
-    // Vertical
     for (let col = 0; col < GRID_SIZE; col++) {
       for (let row = 0; row < GRID_SIZE - 2; row++) {
         const color = grid[row][col].color
@@ -110,7 +108,6 @@ export default function ColorSwapPuzzle() {
     })
     setScore((prev) => prev + seen.size)
 
-    // Drop and fill
     for (let col = 0; col < GRID_SIZE; col++) {
       const colors = []
       for (let row = GRID_SIZE - 1; row >= 0; row--) {
@@ -132,45 +129,60 @@ export default function ColorSwapPuzzle() {
       red: "bg-red-500",
       blue: "bg-blue-500",
       green: "bg-green-500",
-      yellow: "bg-yellow-300",
+      yellow: "bg-yellow-400",
       purple: "bg-purple-500",
       "": "bg-gray-800",
     })[color]
 
+  const resetGame = () => {
+    setGrid(generateGrid())
+    setScore(0)
+    setSelected(null)
+  }
+
   return (
-    <main className="min-h-screen p-6 flex flex-col items-center justify-center bg-gray-100 relative">
-      {/* ✅ Back Button */}
-      <div className="fixed top-4 left-4">
-        <Button
-          variant="outline"
-          size="sm"
-          className="bg-white/20 backdrop-blur border-white/30 text-white hover:bg-white/30"
-          onClick={() => router.push("/games")}
+    <GameWrapper
+      title="Color Swap Puzzle"
+      description="Swap adjacent tiles to match 3 or more!"
+      stats={[
+        { label: "Score", value: score, icon: <Trophy className="w-4 h-4" /> },
+      ]}
+    >
+      <div className="w-full max-w-lg">
+        <motion.div
+          className="grid grid-cols-6 gap-1 border-4 border-white/20 rounded-xl overflow-hidden shadow-2xl"
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5 }}
         >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Games
-        </Button>
-      </div>
-
-      <section className="w-full max-w-3xl rounded-2xl bg-white/85 backdrop-blur p-6 shadow-xl">
-        <h1 className="text-4xl font-bold mb-4 text-[#FF6C00]">🧩 Color Swap Puzzle</h1>
-        <p className="text-lg mb-4 text-green-300">Score: {score}</p>
-
-        <div className="grid grid-cols-6 gap-1 border-4 border-white">
           {grid.map((row, rIdx) =>
             row.map((tile, cIdx) => {
               const isSelected = selected?.[0] === rIdx && selected?.[1] === cIdx
               return (
-                <button
+                <motion.button
                   key={tile.id}
                   onClick={() => handleTileClick(rIdx, cIdx)}
-                  className={`w-12 h-12 ${getBg(tile.color)} rounded-md ${isSelected ? "ring-4 ring-white" : ""}`}
+                  className={`w-12 h-12 ${getBg(tile.color)} rounded-md ${
+                    isSelected ? "ring-4 ring-white shadow-lg" : ""
+                  }`}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.2, delay: rIdx * 0.02 + cIdx * 0.02 }}
+                  whileHover={{ scale: tile.color ? 1.1 : 1 }}
+                  whileTap={{ scale: 0.95 }}
                 />
               )
             }),
           )}
+        </motion.div>
+
+        <div className="mt-6 flex justify-center gap-4">
+          <Button onClick={resetGame} className="bg-white/20 backdrop-blur hover:bg-white/30">
+            <RefreshCw className="w-4 h-4 mr-2" />
+            New Game
+          </Button>
         </div>
-      </section>
-    </main>
+      </div>
+    </GameWrapper>
   )
 }

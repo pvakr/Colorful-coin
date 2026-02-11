@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import GameWrapper from "@/components/GameWrapper";
+import { Trophy, Target, Lightbulb } from "lucide-react";
+import { motion } from "framer-motion";
 
-// --- Utilities ---
 type Swatch = { id: string; hex: string; lum: number };
 
 function randHex() {
@@ -24,16 +25,13 @@ function hexToRgb(hex: string) {
   return { r, g, b };
 }
 
-// Perceived luminance (sRGB -> linearized)
 function luminance(hex: string) {
   const { r, g, b } = hexToRgb(hex);
   const toLin = (v: number) => {
     const s = v / 255;
     return s <= 0.04045 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
   };
-  const R = toLin(r),
-    G = toLin(g),
-    B = toLin(b);
+  const R = toLin(r), G = toLin(g), B = toLin(b);
   return 0.2126 * R + 0.7152 * G + 0.0722 * B;
 }
 
@@ -51,9 +49,7 @@ export default function Page() {
 
   const [round, setRound] = useState(1);
   const [items, setItems] = useState<Swatch[]>([]);
-  const [message, setMessage] = useState<string>(
-    "Drag swatches from lightest to darkest."
-  );
+  const [message, setMessage] = useState<string>("Drag swatches from lightest to darkest.");
   const [lastScore, setLastScore] = useState<number | null>(null);
   const [isChecking, setIsChecking] = useState(false);
   const [isHintOpen, setIsHintOpen] = useState(false);
@@ -63,13 +59,11 @@ export default function Page() {
   const [isAnswerOpen, setIsAnswerOpen] = useState(false);
   const [answerOrder, setAnswerOrder] = useState<Swatch[]>([]);
 
-  // Generate a new round: 5–8 colors with good spread
   const newRound = useCallback(() => {
     setIsChecking(false);
     setLastScore(null);
     setMessage("Drag swatches from lightest to darkest.");
-    const count = Math.floor(Math.random() * 4) + 5; // 5..8
-    // bias: include a very light and a very dark color to make ordering clearer
+    const count = Math.floor(Math.random() * 4) + 5;
     const base: string[] = [
       "#111111",
       "#eeeeee",
@@ -90,11 +84,9 @@ export default function Page() {
 
   const correctOrder = useMemo(
     () => [...items].sort((a, b) => a.lum - b.lum).map((s) => s.id),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [items.map((i) => i.id).join("|")] // recalc when items set changes
+    [items.map((i) => i.id).join("|")]
   );
 
-  // --- Drag & Drop logic ---
   const dragFrom = useRef<number | null>(null);
 
   function onDragStart(idx: number) {
@@ -115,7 +107,6 @@ export default function Page() {
     });
   }
 
-  // Keyboard reordering for accessibility
   function moveItem(from: number, dir: -1 | 1) {
     const to = from + dir;
     if (to < 0 || to >= items.length) return;
@@ -138,21 +129,19 @@ export default function Page() {
     setLastScore(pct);
     setMessage(
       pct === 100
-        ? "✅ Perfect! Nailed the order."
+        ? "Perfect! Nailed the order."
         : pct >= 70
-        ? `👍 Good job! Accuracy: ${pct}%`
-        : `😅 Keep practicing! Accuracy: ${pct}%`
+        ? `Good job! Accuracy: ${pct}%`
+        : `Keep practicing! Accuracy: ${pct}%`
     );
   }
 
   function revealHint() {
-    // If showing answer, exit that mode first
     if (showAnswerMode) exitShowAnswer();
     setIsHintOpen(true);
   }
 
   function showAnswer() {
-    // Show correct order in a separate box/dialog without altering the game
     if (showAnswerMode) exitShowAnswer();
     setIsChecking(false);
     setLastScore(null);
@@ -177,42 +166,25 @@ export default function Page() {
   }
 
   return (
-    <main className="min-h-screen p-6 relative">
-      <div className="fixed top-6 left-6">
-        <Button
-          variant="outline"
-          size="sm"
-          className="bg-transparent hover:bg-transparent border px-3"
-          onClick={() => router.push("/games")}
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Games
-        </Button>
-      </div>
+    <GameWrapper
+      title="Color Sort"
+      description="Sort colors from lightest to darkest"
+      stats={[
+        { label: "Round", value: round, icon: <Target className="w-4 h-4" /> },
+        { label: "Accuracy", value: lastScore ? `${lastScore}%` : "-", icon: <Trophy className="w-4 h-4" /> },
+      ]}
+    >
+      <div className="w-full max-w-4xl">
+        <p className="text-center font-medium text-white mb-4">{message}</p>
 
-      <section className="mx-auto max-w-4xl">
-        <div className="flex flex-col items-center gap-3">
-          <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-center">Color Sort</h1>
-          <span className="inline-flex items-center gap-2 text-xs sm:text-sm font-medium border rounded-full px-3 py-1">
-            <span>Round</span>
-            <span className="font-semibold">{round}</span>
-          </span>
-        </div>
-
-        <p className="mt-4 text-center font-medium">{message}</p>
-
-        {/* Side-by-side swatches */}
-        <div
-          className="mt-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3"
+        <motion.div
+          className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3"
           role="list"
           aria-label="Sortable color swatches"
         >
           {items.map((s, idx) => (
-            <div
+            <motion.div
               key={s.id}
-              className={`select-none rounded-xl border p-3 flex flex-col items-center gap-2 ${
-                isChecking && correctOrder[idx] === s.id ? "ring-2 ring-green-300" : ""
-              }`}
               draggable
               onDragStart={() => {
                 if (showAnswerMode) exitShowAnswer();
@@ -226,97 +198,71 @@ export default function Page() {
                 if (e.key === "ArrowLeft") moveItem(idx, -1);
                 if (e.key === "ArrowRight") moveItem(idx, 1);
               }}
-            >
-              <div className="h-14 w-14 rounded-lg border" style={{ background: s.hex }} aria-label={s.hex} />
-              <div className="text-xs font-mono">{s.hex.toUpperCase()}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* Actions */}
-        <div className="mt-6 flex flex-wrap items-center gap-3">
-          <button onClick={() => { if (showAnswerMode) exitShowAnswer(); checkOrder(); }} className="rounded-xl border px-4 py-2">
-            Check Order
-          </button>
-          <button onClick={() => { if (showAnswerMode) exitShowAnswer(); setRound((r) => r + 1); }} className="rounded-xl border px-4 py-2">
-            New Round
-          </button>
-          <button onClick={revealHint} className="rounded-xl border px-4 py-2 text-sm">
-            Hint
-          </button>
-          <button onClick={showAnswer} className="rounded-xl border px-4 py-2 text-sm">
-            Show Answer
-          </button>
-
-          {lastScore !== null && (
-            <span
-              className={`ml-auto rounded-xl px-3 py-1 text-sm border ${
-                lastScore === 100
-                  ? "bg-green-50 border-green-200"
-                  : lastScore >= 70
-                  ? "bg-yellow-50 border-yellow-200"
-                  : "bg-red-50 border-red-200"
+              className={`select-none rounded-xl border p-3 flex flex-col items-center gap-2 bg-white/10 backdrop-blur cursor-grab active:cursor-grabbing ${
+                isChecking && correctOrder[idx] === s.id ? "ring-2 ring-green-400" : ""
               }`}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.3, delay: idx * 0.05 }}
+              whileHover={{ scale: 1.05 }}
             >
-              Accuracy: {lastScore}%
-            </span>
-          )}
+              <div className="h-14 w-14 rounded-lg border shadow-lg" style={{ background: s.hex }} aria-label={s.hex} />
+              <div className="text-xs font-mono text-white">{s.hex.toUpperCase()}</div>
+            </motion.div>
+          ))}
+        </motion.div>
+
+        <div className="mt-6 flex flex-wrap items-center gap-3 justify-center">
+          <Button onClick={() => { if (showAnswerMode) exitShowAnswer(); checkOrder(); }} className="bg-white/20 backdrop-blur hover:bg-white/30">
+            Check Order
+          </Button>
+          <Button onClick={() => { if (showAnswerMode) exitShowAnswer(); setRound((r) => r + 1); }} className="bg-white/20 backdrop-blur hover:bg-white/30">
+            New Round
+          </Button>
+          <Button onClick={revealHint} className="bg-white/20 backdrop-blur hover:bg-white/30">
+            <Lightbulb className="w-4 h-4 mr-2" />
+            Hint
+          </Button>
+          <Button onClick={showAnswer} className="bg-white/20 backdrop-blur hover:bg-white/30">
+            Show Answer
+          </Button>
         </div>
 
-        {/* Legend */}
-        <div className="mt-6 rounded-xl border p-3 text-sm">
-          <div className="font-medium mb-1">How to play</div>
-          <ul className="list-disc pl-5 space-y-1">
-            <li>Drag the tiles to sort from lightest → darkest.</li>
-            <li>Use ← / → arrow keys to reorder with the keyboard.</li>
-            <li>Press Check Order to see your accuracy.</li>
-            <li>Start a New Round for a fresh set of colors.</li>
-          </ul>
-        </div>
-      </section>
-      {/* Answer dialog (separate box) */}
-      <Dialog open={isAnswerOpen} onOpenChange={setIsAnswerOpen}>
-        <DialogContent className="sm:max-w-xl">
-          <DialogHeader>
-            <DialogTitle className="text-2xl">Correct Order (Light → Dark)</DialogTitle>
-            <DialogDescription>
-              Reference only. Your current game state remains unchanged.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-            {answerOrder.map((s) => (
-              <div key={s.id} className="rounded-xl border p-3 flex flex-col items-center gap-2">
-                <div className="h-12 w-12 rounded-lg border" style={{ background: s.hex }} aria-label={s.hex} />
-                <div className="text-xs font-mono">{s.hex.toUpperCase()}</div>
-              </div>
-            ))}
-          </div>
-          <div className="flex justify-end mt-4">
-            <button className="rounded-xl border px-4 py-2" onClick={() => setIsAnswerOpen(false)}>
-              Close
-            </button>
-          </div>
-        </DialogContent>
-      </Dialog>
-      {/* Hint dialog */}
-      <Dialog open={isHintOpen} onOpenChange={setIsHintOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-2xl">Hint</DialogTitle>
-            <DialogDescription>
-              Place tiles from lightest to darkest. Compare brightness rather than hue.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex justify-end">
-            <button
-              className="rounded-xl border px-4 py-2"
-              onClick={() => setIsHintOpen(false)}
-            >
-              Got it
-            </button>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </main>
+        <Dialog open={isAnswerOpen} onOpenChange={setIsAnswerOpen}>
+          <DialogContent className="sm:max-w-xl">
+            <DialogHeader>
+              <DialogTitle className="text-2xl">Correct Order (Light → Dark)</DialogTitle>
+              <DialogDescription>Reference only. Your current game state remains unchanged.</DialogDescription>
+            </DialogHeader>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+              {answerOrder.map((s) => (
+                <div key={s.id} className="rounded-xl border p-3 flex flex-col items-center gap-2 bg-white/10">
+                  <div className="h-12 w-12 rounded-lg border" style={{ background: s.hex }} aria-label={s.hex} />
+                  <div className="text-xs font-mono text-white">{s.hex.toUpperCase()}</div>
+                </div>
+              ))}
+            </div>
+            <div className="flex justify-end mt-4">
+              <Button onClick={() => setIsAnswerOpen(false)}>Close</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={isHintOpen} onOpenChange={setIsHintOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-2xl flex items-center gap-2">
+                <Lightbulb className="w-6 h-6 text-yellow-400" />
+                Hint
+              </DialogTitle>
+              <DialogDescription>Place tiles from lightest to darkest. Compare brightness rather than hue.</DialogDescription>
+            </DialogHeader>
+            <div className="flex justify-end">
+              <Button onClick={() => setIsHintOpen(false)}>Got it</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </GameWrapper>
   );
 }

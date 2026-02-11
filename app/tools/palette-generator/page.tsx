@@ -284,12 +284,6 @@ export default function PaletteGeneratorPage() {
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
-            <Link href="/tools">
-              <Button variant="outline" size="sm">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Tools
-              </Button>
-            </Link>
             <div>
               <h1 className="text-2xl font-bold text-foreground">Palette Generator</h1>
               <p className="text-muted-foreground">Generate harmonious color palettes for your artwork</p>

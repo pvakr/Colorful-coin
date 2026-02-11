@@ -216,12 +216,6 @@ export default function App() {
 
             {/* Buttons Container */}
             <div className="flex flex-col sm:flex-row gap-4 mt-2 justify-center w-full max-w-lg">
-                <a 
-                    href="/games" 
-                    className="flex-shrink-0 flex items-center justify-center px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white font-bold rounded-full shadow-lg transition duration-300 transform hover:scale-105 active:scale-95 tracking-widest text-lg uppercase"
-                >
-                    &larr; Back to Games
-                </a>
                 <button
                     onClick={startGame}
                     className="flex-grow px-10 py-3 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-full shadow-lg transition duration-300 transform hover:scale-105 uppercase tracking-widest text-lg disabled:opacity-50"

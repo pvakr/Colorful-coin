@@ -1,10 +1,11 @@
 "use client"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { CheckCircle, XCircle } from "lucide-react"
+import GameWrapper from "@/components/GameWrapper";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { motion, AnimatePresence } from "framer-motion";
+import { Trophy, Target, Zap, Clock, CheckCircle, XCircle } from "lucide-react";
 import "../../globals.css"
 
 const baseColors = ["#FF6C00", "#00FFB3", "#FF003C", "#7D4AFF", "#00E4FF", "#FFEA00", "#00FF66", "#FF66CC"]
@@ -92,49 +93,37 @@ export default function ColorDuplicator() {
   }
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center px-4 py-12">
-      <div className="fixed top-6 left-6">
-        <Button variant="outline" size="sm" className="bg-transparent hover:bg-transparent border px-3" onClick={handleBack}>
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Games
-        </Button>
-      </div>
-
-      <section className="w-full max-w-3xl">
-        <div className="flex flex-col items-center gap-3">
-          <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-center">Color Duplicator</h1>
-          <div className="flex items-center gap-3">
-            <span className="inline-flex items-center gap-2 text-xs sm:text-sm font-medium border rounded-full px-3 py-1">
-              <span>Score</span>
-              <span className="font-semibold">{score}</span>
-            </span>
-            <span className="inline-flex items-center gap-2 text-xs sm:text-sm font-medium border rounded-full px-3 py-1">
-              <span>Round</span>
-              <span className="font-semibold">{round}</span>
-            </span>
-            <span className="inline-flex items-center gap-2 text-xs sm:text-sm font-medium border rounded-full px-3 py-1">
-              <span>Time</span>
-              <span className="font-semibold">{timeLeft}s</span>
-            </span>
-          </div>
-          <p className="text-base sm:text-lg">Tap the **duplicated color**</p>
-        </div>
-
-        <div className="mt-6 rounded-xl border p-4">
+    <GameWrapper
+      title="Color Duplicator"
+      description="Find the duplicated color in the grid!"
+      stats={[
+        { label: "Score", value: score, icon: <Trophy className="w-4 h-4" /> },
+        { label: "Round", value: round, icon: <Target className="w-4 h-4" /> },
+        { label: "Time", value: `${timeLeft}s`, icon: <Clock className="w-4 h-4" /> },
+      ]}
+    >
+      <div className="w-full max-w-2xl">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="mt-6 rounded-xl border bg-white/10 backdrop-blur p-4"
+        >
           <div className="grid grid-cols-3 gap-4 place-items-center">
-          {grid.map((color, idx) => (
-            <button
-              key={idx}
-              onClick={() => handleClick(color)}
-              // Disable buttons when not waiting for input
-              disabled={status !== "waiting"} 
-              className="w-20 h-20 rounded-xl border shadow-sm hover:scale-105 transition-transform"
-              style={{ backgroundColor: color }}
-              aria-label={`color ${idx + 1}`}
-            />
-          ))}
+            {grid.map((color, idx) => (
+              <motion.button
+                key={idx}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => handleClick(color)}
+                disabled={status !== "waiting"}
+                className="w-20 h-20 rounded-xl border shadow-lg hover:shadow-xl transition-shadow"
+                style={{ backgroundColor: color }}
+                aria-label={`color ${idx + 1}`}
+              />
+            ))}
           </div>
-        </div>
+        </motion.div>
 
         <Dialog open={isFeedbackOpen} onOpenChange={setIsFeedbackOpen}>
           <DialogContent className="sm:max-w-md">
@@ -167,7 +156,7 @@ export default function ColorDuplicator() {
             </div>
           </DialogContent>
         </Dialog>
-      </section>
-    </main>
-  )
+      </div>
+    </GameWrapper>
+  );
 }

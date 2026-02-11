@@ -1,9 +1,11 @@
 "use client"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft } from "lucide-react"
+import GameWrapper from "@/components/GameWrapper"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { motion } from "framer-motion"
+import { Trophy, Target, Zap, Heart } from "lucide-react"
 
 const COLORS = ["red", "blue", "green", "yellow", "purple"]
 const MAX_LIVES = 3
@@ -19,8 +21,6 @@ type Blob = {
 }
 
 export default function FadingColorCleaner() {
-  const router = useRouter() // ✅ router defined here
-
   const [blobs, setBlobs] = useState<Blob[]>([])
   const [score, setScore] = useState(0)
   const [lives, setLives] = useState(MAX_LIVES)
@@ -85,9 +85,9 @@ export default function FadingColorCleaner() {
       red: "bg-red-500",
       blue: "bg-blue-500",
       green: "bg-green-500",
-      yellow: "bg-yellow-300",
+      yellow: "bg-yellow-400",
       purple: "bg-purple-500",
-    }[color])
+    })[color]
 
   const resetGame = () => {
     setScore(0)
@@ -96,59 +96,41 @@ export default function FadingColorCleaner() {
     setGameOver(false)
   }
 
-  const handleBack = () => {
-    router.push("/games") // ✅ Navigate back to games
-  }
-
   return (
-    <main className="min-h-screen px-4 py-12">
-      {/* Back button - simplified */}
-      <div className="fixed top-6 left-6">
-        <Button
-          variant="outline"
-          size="sm"
-          className="bg-transparent hover:bg-transparent border px-3"
-          onClick={handleBack}
+    <GameWrapper
+      title="Fading Color Cleaner"
+      description="Tap the colored blobs before they fade away!"
+      stats={[
+        { label: "Score", value: score, icon: <Trophy className="w-4 h-4" /> },
+        { label: "Lives", value: lives, icon: <Heart className="w-4 h-4" /> },
+      ]}
+    >
+      <div className="w-full max-w-4xl">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
         >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Games
-        </Button>
-      </div>
+          {!gameOver && (
+            <p className="text-center text-base sm:text-lg mb-4">Tap the colored blobs before they fade away.</p>
+          )}
 
-      <section className="w-full max-w-4xl mx-auto">
-        <div className="flex flex-col items-center gap-3">
-          <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-center">Fading Color Cleaner</h1>
-          <div className="flex items-center gap-3">
-            <span className="inline-flex items-center gap-2 text-xs sm:text-sm font-medium border rounded-full px-3 py-1">
-              <span>Score</span>
-              <span className="font-semibold">{score}</span>
-            </span>
-            <span className="inline-flex items-center gap-2 text-xs sm:text-sm font-medium border rounded-full px-3 py-1">
-              <span>Lives</span>
-              <span className="font-semibold">{lives}</span>
-            </span>
+          <div className="relative w-full h-[500px] mx-auto bg-slate-900/50 backdrop-blur rounded-xl border-2 border-white/20 overflow-hidden shadow-2xl">
+            {blobs.map((blob) => (
+              <motion.button
+                key={blob.id}
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={() => handleClick(blob.id)}
+                className={`absolute w-12 h-12 rounded-full ${getBg(blob.color)} shadow-lg`}
+                style={{
+                  top: `${blob.y}%`,
+                  left: `${blob.x}%`,
+                }}
+              />
+            ))}
           </div>
-        </div>
-
-        {!gameOver && (
-          <p className="mt-4 text-center text-base sm:text-lg">Tap the colored blobs before they fade away.</p>
-        )}
-
-        <div className="mt-6 relative w-full h-[500px] mx-auto bg-gray-800 rounded border-2 border-white overflow-hidden">
-          {blobs.map((blob) => (
-            <button
-              key={blob.id}
-              onClick={() => handleClick(blob.id)}
-              className={`absolute w-12 h-12 rounded-full ${getBg(blob.color)} transition-opacity`}
-              style={{
-                top: `${blob.y}%`,
-                left: `${blob.x}%`,
-                opacity: 1,
-                animation: `fadeout ${FADE_DURATION}ms forwards`,
-              }}
-            />
-          ))}
-        </div>
+        </motion.div>
 
         <Dialog open={gameOver}>
           <DialogContent className="sm:max-w-md">
@@ -159,19 +141,11 @@ export default function FadingColorCleaner() {
               </DialogDescription>
             </DialogHeader>
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={handleBack}>Back to Games</Button>
               <Button onClick={resetGame}>Restart</Button>
             </div>
           </DialogContent>
         </Dialog>
-
-        <style jsx global>{`
-          @keyframes fadeout {
-            from { opacity: 1; }
-            to { opacity: 0; }
-          }
-        `}</style>
-      </section>
-    </main>
+      </div>
+    </GameWrapper>
   )
 }

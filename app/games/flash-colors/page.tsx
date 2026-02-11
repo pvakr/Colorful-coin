@@ -2,9 +2,11 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, CheckCircle, XCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import GameWrapper from "@/components/GameWrapper"
+import { CheckCircle, XCircle, Trophy, Zap } from "lucide-react"
+import { motion, AnimatePresence } from "framer-motion"
 
 const COLOR_HEX: Record<string, string> = {
   Red: "#ef4444",
@@ -18,6 +20,15 @@ const COLOR_HEX: Record<string, string> = {
 }
 
 const COLOR_WORDS = Object.keys(COLOR_HEX)
+
+function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr]
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[a[i], a[j]] = [a[j], a[i]]
+  }
+  return a
+}
 
 export default function FlashColors() {
   const router = useRouter()
@@ -33,7 +44,6 @@ export default function FlashColors() {
   const [message, setMessage] = useState("Tap the correct color name")
   const timerRef = useRef<number | null>(null)
 
-  // Speed decreases as the round increases (max speed 250ms)
   const speed = useMemo(() => Math.max(250, 500 - (round - 1) * 20), [round])
 
   useEffect(() => {
@@ -43,7 +53,6 @@ export default function FlashColors() {
     return () => {
       if (timerRef.current) window.clearTimeout(timerRef.current)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [round, started])
 
   function startRound() {
@@ -56,36 +65,31 @@ export default function FlashColors() {
     setChoices(shuffle([word, ...distractors]))
 
     setVisible(true)
-    // Flash the color for the calculated speed
     timerRef.current = window.setTimeout(() => setVisible(false), speed)
-    setStatus("waiting") // Ensure status is waiting before the flash
+    setStatus("waiting")
     setMessage("Tap the correct color name")
   }
 
   function onSelect(choice: string) {
-    if (status !== "waiting" || isFeedbackOpen) return // Prevent multiple clicks
+    if (status !== "waiting" || isFeedbackOpen) return
 
     if (choice === correctWord) {
-      // Correct: Set win status and open dialog
       setScore(s => s + 1)
       setStatus("win")
       setMessage("Correct! You earned a point.")
     } else {
-      // Incorrect: Set game over status and open dialog
       setStatus("gameOver")
       setMessage(`Game Over! The correct color was ${correctWord}.`)
     }
-    
+
     setIsFeedbackOpen(true)
   }
-  
+
   const handleNextOrRestart = () => {
     setIsFeedbackOpen(false)
     if (status === "win") {
-      // Continue to next round
       setRound(r => r + 1)
-    } else if (status === "gameOver") {
-      // Restart the entire game
+    } else {
       setStarted(false)
       setRound(1)
       setScore(0)
@@ -93,133 +97,129 @@ export default function FlashColors() {
     }
   }
 
-  const handleBack = () => {
-    router.push("/games")
-  }
-
   return (
-    <div>
-      {/* Back Button */}
-      <div className="fixed top-6 left-6 z-10">
-        <Button
-          variant="outline"
-          size="sm"
-          className="bg-white/20 backdrop-blur border-white/30 text-white hover:bg-white/30 border text-black"
-          onClick={handleBack}
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Games
-        </Button>
-      </div>
-
-      <main className="min-h-screen flex flex-col items-center justify-center text-center px-4 p-6">
-
+    <GameWrapper
+      title="Flash Colors"
+      description="Test your color memory and reflexes!"
+      stats={[
+        { label: "Round", value: round, icon: <Zap className="w-4 h-4" /> },
+        { label: "Score", value: score, icon: <Trophy className="w-4 h-4" /> },
+      ]}
+    >
       {!started ? (
-        <section className="w-full max-w-3xl rounded-2xl bg-white/85 backdrop-blur p-8 shadow-xl text-center">
-          <h1 className="text-2xl font-bold mb-4">🎨 Flash Colors</h1>
-          {round > 1 && <p className="text-lg font-semibold text-red-600 mb-4">Game Over! Final Score: {score}</p>}
-          <p className="text-gray-600 mb-6">Test your color memory and reflexes!</p>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5 }}
+          className="w-full max-w-md rounded-2xl bg-white/10 backdrop-blur p-8 shadow-xl text-center"
+        >
+          {round > 1 && (
+            <p className="text-lg font-semibold text-red-400 mb-4">
+              Game Over! Final Score: {score}
+            </p>
+          )}
+          <p className="text-white/80 mb-6">Test your color memory and reflexes!</p>
           <Button
-              onClick={() => {
-                setStarted(true)
-                setRound(1)
-                setScore(0)
-                setMessage("Tap the correct color name")
-              }}
-              className="bg-black text-white border hover:bg-gray-800"
-            >
-              Start Game
-            </Button>
-        </section>
+            onClick={() => {
+              setStarted(true)
+              setRound(1)
+              setScore(0)
+              setMessage("Tap the correct color name")
+            }}
+            className="bg-white text-black hover:bg-gray-200 shadow-lg"
+          >
+            <Zap className="w-5 h-5 mr-2" />
+            Start Game
+          </Button>
+        </motion.div>
       ) : (
-        <section className="w-full max-w-3xl rounded-2xl bg-white/85 backdrop-blur p-6 shadow-xl">
-          <h1 className="text-xl font-bold mb-2">Flash Colors</h1>
-          <p className="text-sm opacity-70 mb-4">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="w-full max-w-xl rounded-2xl bg-white/10 backdrop-blur p-6 shadow-xl"
+        >
+          <p className="text-sm text-white/60 mb-4">
             Round {round} · Score {score} · Flash {speed}ms
           </p>
 
           <div className="h-40 mb-4 rounded-xl border overflow-hidden">
-            <div
-              className="h-full w-full transition-opacity duration-100"
-              style={{ backgroundColor: flashColor, opacity: visible ? 1 : 0 }}
-            />
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={flashColor}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: visible ? 1 : 0 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: speed / 1000 }}
+                className="h-full w-full"
+                style={{ backgroundColor: flashColor }}
+              />
+            </AnimatePresence>
           </div>
 
-          <p className="mb-3 font-medium">{message}</p>
+          <p className="mb-3 font-medium text-white">{message}</p>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {choices.map(c => (
+            {choices.map((c, index) => (
+              <motion.div
+                key={c}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: index * 0.1 }}
+              >
                 <Button
                   key={c}
                   onClick={() => onSelect(c)}
-                  className="bg-black text-white border hover:bg-gray-800"
-                  // Disable selection while waiting for the next round or if dialog is open
-                  disabled={status !== "waiting" || isFeedbackOpen} 
+                  className="w-full bg-white/20 backdrop-blur hover:bg-white/30 text-white border border-white/20"
+                  disabled={status !== "waiting" || isFeedbackOpen}
                 >
                   {c}
                 </Button>
-              ))}
-           </div>
-        </section>
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
       )}
-    </main>
-    
-    {/* Feedback Dialog (Popup) */}
-    <Dialog open={isFeedbackOpen} onOpenChange={setIsFeedbackOpen}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-2xl">
-            {status === "win" ? (
-              <>
-                <CheckCircle className="w-6 h-6 text-green-500" />
-                Correct!
-              </>
-            ) : (
-              <>
-                <XCircle className="w-6 h-6 text-red-500" />
-                Game Over
-              </>
-            )}
-          </DialogTitle>
-          <DialogDescription>
-            {/* The primary message is rendered first by DialogDescription's intrinsic <p> */}
-            {message}
-            
-            {/* FIX APPLIED HERE: Use <br /> and <span> tags to ensure valid nesting inside <p> */}
-            {status === "win" && (
-              <>
-                <br />
-                <span>Prepare for Round {round + 1}!</span>
-              </>
-            )}
-            {status === "gameOver" && (
-              <>
-                <br />
-                <span className="font-bold">Your Final Score: {score}</span>
-              </>
-            )}
-          </DialogDescription>
-        </DialogHeader>
-        <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={handleBack}>
-            Back to Games
-          </Button>
-          <Button onClick={handleNextOrRestart}>
-            {status === "win" ? "Next Round" : "Restart Game"}
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
-  </div>
-  )
-}
 
-// Shuffle helper function
-function shuffle<T>(arr: T[]): T[] {
-  const a = [...arr]
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[a[i], a[j]] = [a[j], a[i]]
-  }
-  return a
+      <Dialog open={isFeedbackOpen} onOpenChange={setIsFeedbackOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-2xl">
+              {status === "win" ? (
+                <>
+                  <CheckCircle className="w-6 h-6 text-green-500" />
+                  Correct!
+                </>
+              ) : (
+                <>
+                  <XCircle className="w-6 h-6 text-red-500" />
+                  Game Over
+                </>
+              )}
+            </DialogTitle>
+            <DialogDescription>
+              {message}
+              {status === "win" && (
+                <>
+                  <br />
+                  <span>Prepare for Round {round + 1}!</span>
+                </>
+              )}
+              {status === "gameOver" && (
+                <>
+                  <br />
+                  <span className="font-bold text-yellow-400">Your Final Score: {score}</span>
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2">
+            <Button onClick={handleNextOrRestart}>
+              {status === "win" ? "Next Round" : "Restart Game"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </GameWrapper>
+  )
 }
