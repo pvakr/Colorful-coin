@@ -149,19 +149,12 @@ const PaletteThiefGame = () => {
     generateTarget();
     setMessage('Identify the 5 dominant colors!');
   };
-  
-  const handleBack = () => {
-    window.location.href = "/games";
-  };
 
-
-
-const stats: { label: string; value: string | number; icon: LucideIcon }[] = [
-  { label: "Score", value: `${score}/${DOMINANT_COUNT}`, icon: Trophy },
-  { label: "Best", value: `${sessionHighScore}/${DOMINANT_COUNT}`, icon: Target },
-  { label: "Round", value: gameStarted ? "Active" : "Ready", icon: Palette },
-]
-
+  const stats = [
+    { label: "Score", value: `${score}/${DOMINANT_COUNT}`, icon: Trophy },
+    { label: "Best", value: `${sessionHighScore}/${DOMINANT_COUNT}`, icon: Target },
+    { label: "Round", value: gameStarted ? "Active" : "Ready", icon: Palette },
+  ];
 
   return (
     <GameWrapper

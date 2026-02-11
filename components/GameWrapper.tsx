@@ -1,6 +1,6 @@
 "use client"
 
-import { ReactNode } from "react"
+import { ReactNode, isValidElement, createElement, type ReactElement } from "react"
 import { motion } from "framer-motion"
 import { Sparkles, LucideIcon } from "lucide-react"
 import Link from "next/link"
@@ -28,6 +28,24 @@ export default function GameWrapper({
   backUrl = "/games",
   stats = [],
 }: GameWrapperProps) {
+  // Helper to render icon properly
+  const renderIcon = (icon: ReactNode | LucideIcon | undefined) => {
+    if (!icon) return null
+    
+    // If it's a React element (JSX), render it as-is
+    if (isValidElement(icon)) {
+      return icon
+    }
+    
+    // If it's a LucideIcon component, render it with className
+    if (typeof icon === "function" || typeof icon === "object") {
+      const IconComponent = icon as React.ComponentType<{ className?: string }>
+      return <IconComponent className="w-4 h-4 text-white/70" />
+    }
+    
+    return null
+  }
+
   return (
     <div className="relative min-h-screen">
       {/* Glassmorphism overlay */}
@@ -69,9 +87,6 @@ export default function GameWrapper({
           {stats.length > 0 && (
             <div className="flex items-center gap-3">
               {stats.map((stat, index) => {
-                const Icon =
-                  typeof stat.icon === "function" ? stat.icon : null
-
                 return (
                   <motion.div
                     key={stat.label}
@@ -80,9 +95,7 @@ export default function GameWrapper({
                     transition={{ duration: 0.5, delay: index * 0.1 }}
                     className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/10 backdrop-blur border border-white/20"
                   >
-                    {Icon && <Icon className="w-4 h-4 text-white/70" />}
-                    {typeof stat.icon !== "function" && stat.icon}
-
+                    {renderIcon(stat.icon)}
                     <div>
                       <p className="text-xs text-white/50">{stat.label}</p>
                       <p className="text-white font-semibold">{stat.value}</p>
