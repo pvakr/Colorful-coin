@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react"
 import { ArrowLeft, CheckCircle, XCircle, RotateCcw, Target, Palette } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { motion } from "framer-motion"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -88,10 +87,11 @@ export default function ColorFusionLab() {
     setTimeout(() => setShowTarget(false), 5000)
   }
 
+  /* ✅ FIXED STATS */
   const stats = [
-    { label: "Round", value: round, icon: RotateCcw },
-    { label: "Score", value: score, icon: Target },
-    { label: "Match", value: `${match}%`, icon: Palette },
+    { label: "Round", value: round, icon: <RotateCcw className="w-4 h-4" /> },
+    { label: "Score", value: score, icon: <Target className="w-4 h-4" /> },
+    { label: "Match", value: `${match}%`, icon: <Palette className="w-4 h-4" /> },
   ]
 
   const sliders = [
@@ -172,7 +172,7 @@ export default function ColorFusionLab() {
           </Button>
         </div>
 
-        {/* Result Dialog */}
+        {/* Dialog */}
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogContent>
             <DialogHeader>
